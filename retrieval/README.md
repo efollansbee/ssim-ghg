@@ -11,7 +11,7 @@ Simple Jupyter Notebook toy retrieval where we generate synthetic radiances and 
 
 ## Setup
 
-* You'll need to make sure ABSCO_TABLE_FOLDER in settings.py is pointing to the folder containing absco.h5
+* You'll need to make sure that `absco_table` in `site_settings.ini` points to the file `absco.h5`, wherever that resides on your file system
 * You can also change the band ranges, spectral resolutions, geometry, SNR, etc. within settings.py
 
 ## Executing program
