@@ -1,21 +1,21 @@
 import rdata
 import numpy as np
 from netCDF4 import Dataset
-import os, pickle, configparser
+import os, pickle, yaml
 from collections import defaultdict
 
 class Paths(object):
 
     def __init__(self):
         super(Paths, self).__init__()
-        # setting to be stored in ../site_settings.ini
-        conf = configparser.ConfigParser()
-        conf.read('../site_settings.ini')
-        self.data_root = conf.get('paths', 'input folder')
-        self.output_root = conf.get('paths', 'output folder')
+        # setting to be stored in ../site_settings.yml
+        with open('../site_settings.yml', 'r') as fid:
+            conf = yaml.safe_load(fid)
+        self.data_root = conf['global_paths']['input_folder']
+        self.output_root = conf['global_paths']['output_folder']
         try:
-            self.figure_font = conf.get('plotting', 'figure font')
-        except NoOptionError:
+            self.figure_font = conf['plotting']['font']
+        except KeyError:
             self.figure_font = 'Sans Serif'
 
         self.jacobi_rda = os.path.join(self.data_root, 'jacobians/trunc_full_jacob_032624_with_dimnames_unit_pulse_4x5_mask_hour_timestamping.rda')

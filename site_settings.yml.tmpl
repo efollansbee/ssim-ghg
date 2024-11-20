@@ -1,10 +1,12 @@
-#-- Config file for toy examples
----
-toy_examples:
-- paths:
-    input_folder: 
-    #-- below doesn't exist, will have to create if necessary in codebases
-    output_folder: 
-- plotting: 
-    font: Script
----
+# Configuration file for the toy example
+plotting:
+  # An optional key to specify the font for matplotlib plots (comment out if not needed)
+  font: 
+global_paths:
+  # input_folder has obs, jacobians, transcom, etc
+  input_folder: 
+  # where you want the output to go, create this if you don't have it
+  output_folder: 
+retrieval:
+  # the full path of absco.h5
+  absco_table: 

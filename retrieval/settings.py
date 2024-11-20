@@ -1,11 +1,13 @@
 import numpy as np
 from find_nearest import find_nearest
-import os
+import os, yaml
 
 #Default settings
 
 # Where are the ABSCO tables kept?
-ABSCO_TABLE_FOLDER = os.path.join(os.environ['HOME'], 'shared/ssim-ghg-data/retrieval_example')
+with open('../site_settings.yml', 'r') as fid:
+    conf = yaml.safe_load(fid)
+ABSCO_TABLE_FILE = conf['retrieval']['absco_table']
 
 #0.76 um O2 A-band, 1.60 um weak CO2 band, 1.65 um CH4 band
 band_max_wn = np.array([13190.0,6285.0,6150.0]) #cm^-1
@@ -55,7 +57,7 @@ T_prior = T_true + 2.0 #Add 2 K to each level of the true temperature profile
 p_prior = p_true * 1.02 #Increase the true pressure profile by 2%
 q_prior = q_true * 1.05 #Increase the true specific humidity profile by 5%
 albedo_prior = [albedo_true[0] + 0.02,albedo_true[1] + 0.02,albedo_true[2] + 0.02] #Add 0.02 to the true albedo
-tau_aerosol_prior = 0.05 #Start with a near-zero AOD. 
+tau_aerosol_prior = 0.05 #Start with a near-zero AOD.
 
 
 ##############################################
