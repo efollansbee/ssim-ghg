@@ -1,0 +1,6 @@
+site_settings.yml
+.ipynb_checkpoints
+__pycache__
+*.nc
+*.~*
+
