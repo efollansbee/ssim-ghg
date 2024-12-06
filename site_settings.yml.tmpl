@@ -1,12 +1,19 @@
 # Configuration file for the toy example
 plotting:
   # An optional key to specify the font for matplotlib plots (comment out if not needed)
-  font: 
+  # e.g.,
+  # font: Calibri
+  font:
 global_paths:
-  # input_folder has obs, jacobians, transcom, etc
-  input_folder: 
+  # input_folder should point to a directory that has the folders obs, jacobians, transcom, etc
+  # spaces in the folder name are OK, but there *must* be a space after the colon, e.g.,
+  # input_folder: /mydrive/my name/data
+  input_folder:
   # where you want the output to go, create this if you don't have it
-  output_folder: 
+  # same rules apply as input_folder, e.g., the following is OK
+  # output_folder: /mydrive/another drive/my name/output
+  output_folder:
 retrieval:
-  # the full path of absco.h5
-  absco_table: 
+  # the full path of absco.h5, e.g.,
+  # absco_table: /mydrive/who knows/input_data/absco.h5
+  absco_table:
