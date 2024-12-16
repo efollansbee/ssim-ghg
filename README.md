@@ -15,7 +15,10 @@
 ```
 git clone git@github.com:US-GHG-Center/ssim-ghg.git ssim-ghg
 ```
-This will check out the code in a folder called `ssim-ghg`. Alternatively, you can change the target name to something else by changing that last element in the command above.
+This will check out the code in a folder called `ssim-ghg`. Alternatively, you can change the target name to something else by changing that last element in the command above. E.g., to check out the code to `math-camp-examples` execute
+```
+git clone git@github.com:US-GHG-Center/ssim-ghg.git math-camp-examples
+```
 
 ### Verify that committing strips the output
 Open any of your own notebooks, change the output, then try to commit/push with `git add`, `git commit` and `git push`.
