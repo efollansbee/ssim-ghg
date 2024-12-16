@@ -21,7 +21,7 @@ git clone git@github.com:US-GHG-Center/ssim-ghg.git math-camp-examples
 ```
 
 ### Verify that committing strips the output
-Open any of your own notebooks, change the output, then try to commit/push with `git add`, `git commit` and `git push`.
+Make sure that you have the `strip-notebook-output` filter as described above either in your global `~/.gitconfig` or the repository's `.git/config`. Open any of your own notebooks, change the output, then try to commit/push with `git add`, `git commit` and `git push`.
 
 ## For people with read-only access
 
