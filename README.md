@@ -9,7 +9,7 @@
   [filter "strip-notebook-output"]
       clean = "jupyter nbconvert --ClearOutputPreprocessor.enabled=True --ClearMetadataPreprocessor.enabled=True --to=notebook --stdin --stdout --log-level=ERROR"
   ```
-  Alternatively, you can add the above block to your `.git/config` _after_ you checkout the repo but _before_ you do any other git operation, even seemingly read-only operations such as `git status`.
+  Alternatively, you can add the above block to your `.git/config` _after_ you checkout the repo but _before_ you do any other git operation, even seemingly read-only operations such as `git status`. If you do this, then the "strip notebooks of output and metadata" filter will only apply to this repo and not globally to all your git repos. Your choice.
 
 ### Check out code
 ```
