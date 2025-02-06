@@ -1,4 +1,4 @@
-# Time-stamp: <hercules-login-4.hpc.msstate.edu:/work/noaa/co2/andy/Projects/enkf_summer_school/repo/ssim-ghg-2024/EnKF/tools/enkf.r: 12 Jun 2024 (Wed) 17:05:38 UTC>
+# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 05 Feb 2025 (Wed) 19:49:44 MST>
 
 # Return data frame of the relevant pieces of a set of furnished
 # obspack_id values (x)
@@ -339,7 +339,7 @@ plot.is.timeseries <- function(xs,
     indir <- find.indir()
     t0 <- proc.time()[3]
     cat("Loading Jacobians...")
-    load(file.path(indir,"inversion_examples/jacobians/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda"))
+    load(file.path(indir,"jacobians/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda"))
     H <- jacob*(12/44) # Andrew reports units conversion needed
     rm(jacob)
     cat(sprintf('%.1fs\n',proc.time()[3]-t0))
@@ -349,7 +349,7 @@ plot.is.timeseries <- function(xs,
     indir <- find.indir()
     t0 <- proc.time()[3]
     cat("Loading obs_catalog...")
-    load(file.path(indir,"inversion_examples/obs/obs_catalog_042424_unit_pulse_hour_timestamp_witherrors_withdates.rda"))
+    load(file.path(indir,"obs/obs_catalog_042424_unit_pulse_hour_timestamp_witherrors_withdates.rda"))
     cat(sprintf('%.1fs\n',proc.time()[3]-t0))
   }
 
@@ -481,7 +481,7 @@ plot.flux.timeseries <- function(ests,
     indir <- find.indir()
     t0 <- proc.time()[3]
     cat("Loading priors integrated over Transcom regions...")
-    tc.priors <- load.ncdf(file.path(indir,"inversion_examples/priors/TRANSCOM_priors.nc"))
+    tc.priors <- load.ncdf(file.path(indir,"priors/TRANSCOM_priors.nc"))
     cat(sprintf('%.1fs\n',proc.time()[3]-t0))
   }
   
