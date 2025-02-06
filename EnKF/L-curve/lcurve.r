@@ -1,48 +1,52 @@
-# Time-stamp: <hercules-login-1.hpc.msstate.edu:/work/noaa/co2/andy/Projects/enkf_summer_school/repo/ssim-ghg-2024/EnKF/L-curve/lc2.r: 26 May 2024 (Sun) 17:30:37 UTC>
+# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/L-curve/lcurve.r - 05 Feb 2025 (Wed) 19:18:38 MST>
 
 source("../tools/enkf.r")
 source("../tools/progress.bar.r")
 source("../tools/find.indir.r")
-indir <- find.indir()
+indir <- find.indir() # potentially replace with trivial yaml access
 
-#alphas <- 10^seq(-8,8,length.out=40)
-alphas <-10^seq(-3,3,length.out=40)
+# explicitly include 1.0 since for this artificial 
+# case, it is the perfect configuration
+alphas <-unique(sort(c(1,10^seq(-3,3,length.out=40))))
 
 nalphas <- length(alphas)
-chi2.resids <- matrix(NA,nrow=1,ncol=nalphas)
-chi2.flux <- matrix(NA,nrow=1,ncol=nalphas)
+
+# allocate storage for results
+var.resids <- matrix(NA,nrow=1,ncol=nalphas)
 var.flux <- matrix(NA,nrow=1,ncol=nalphas)
                                       
 # Load sensitivity matrices (Jacobians)
-t0 <- proc.time()[3]
-cat("Loading Jacobians...")
-load(file.path(indir,"inversion_examples/jacobians/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda"))
-load(file.path(indir,"inversion_examples/jacobians/jacob_bgd_021624.rda"))
-H <- jacob*(12/44) # Andrew reports units conversion needed
-H_fixed <- jacob_bgd[,c(2,3)]
-rm(jacob,jacob_bgd)
-H.orig <- list()
-H.orig$H <- H
-H.orig$H_fixed <- H_fixed
-cat(sprintf('%.1fs\n',proc.time()[3]-t0))
+if(!exists("H.orig")) {
+    t0 <- proc.time()[3]
+    cat("Loading Jacobians...")
+    H.orig <- list()
+    load(file.path(indir,"jacobians/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda"))
+    load(file.path(indir,"jacobians/jacob_bgd_021624.rda"))
+    H.orig$H <- jacob*(12/44) # Andrew reports units conversion needed
+    H.orig$H_fixed <- jacob_bgd[,c(2,3)]
+    rm(jacob,jacob_bgd)
+    cat(sprintf('%.1fs\n',proc.time()[3]-t0))
+}
 
-nobs <- dim(H)[1]
+nobs <- dim(H.orig$H)[1]
 
-# One question often asked is what happens if we get the MDM
-# wrong. You can check that below, by changing Szd.assumed to be
-# different from Szd.actual.
 Szd.actual <- rep(0.5,nobs) # variance in ppm^2
-#Szd.assumed <- rep(0.1,nobs) # variance in ppm^2
 Szd.assumed <- Szd.actual
 
 nparms <- 22*24 # 22 regions, 24 months
 
+# Real covariance of unknowns
 Sx <- diag(rep(1,nparms))
+
+# The generate_ensemble() function just chooses nmemb samples from 
+# the multivariate normal distribution with covariance Sx and mean 0.
+# We repurpose this to choose a random truth condition here.
 truth_condition <- generate_ensemble(Sx=Sx,nmemb=1)
 dim(truth_condition) <- c(nparms,1)
 
-nobs <- dim(H)[1]
-obs <- simulate_observed(H=H, x=truth_condition,H_fixed=H_fixed,Szd=Szd.actual)
+
+# Perturbed observations (because Szd is supplied)
+obs <- simulate_observed(H=H.orig$H, x=truth_condition, H_fixed=H.orig$H_fixed, Szd=Szd.actual)
 dim(obs) <- c(nobs,1)
 
 # Restrict to nobs randomly sampled subset of measurements. Could use
@@ -78,8 +82,7 @@ for (alpha in alphas) {
   dobs <- matrix(simulate_observed(H=H, x=kf$x,H_fixed=H_fixed) - obs,nrow=nobs,ncol=1)
   dx <- matrix(kf$x - x.prior,nrow=nparms,ncol=1)
   
-  chi2.resids[ialpha] <- (1/nobs) * t(dobs) %*% solve(diag(Szd.assumed)) %*% dobs
-  chi2.flux[ialpha] <- (1/nparms) * t(dx) %*% solve(Sx.prior) %*% dx
+  var.resids[ialpha] <- var(as.vector(dobs))
   var.flux[ialpha] <- var(as.vector(kf$x))
 
   pb <- progress.bar.print(pb,ialpha)
@@ -87,4 +90,16 @@ for (alpha in alphas) {
 
 progress.bar.end(pb)
 
-save(chi2.resids,chi2.flux,var.flux,alphas,file="lcurve.rda")
+# save(chi2.resids,chi2.flux,var.flux,alphas,file="lcurve.rda")
+
+options(jupyter.plot_scale=1,repr.plot.height=7,repr.plot.width=14)
+layout(matrix(1:2,nrow=1))
+
+lx <- c(which.min(alphas),which(alphas==1),which.max(alphas))
+plot(x=var.resids, y=var.flux,xlab="variance of the obs resids",ylab="variance of optimized parameters",main="Linear scale")
+points(x=var.resids[lx], y=var.flux[lx],pch=20,col='red')
+text(x=var.resids[lx], y=var.flux[lx],labels=alphas[lx],pos=4,xpd=NA)
+
+plot(x=var.resids, y=var.flux,xlab="variance of the obs resids",ylab="variance of optimized parameters",log='xy',main="Log scale")
+text(x=var.resids[lx], y=var.flux[lx],labels=alphas[lx],pos=4,xpd=NA)
+points(x=var.resids[lx], y=var.flux[lx],pch=20,col='red')
