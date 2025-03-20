@@ -366,12 +366,7 @@ class ForwardFunction:
 
 
 class Retrieval:
-    '''Retrieval object. Parameter defaults are set in settings.py
-    band_max_wn               [array] sfddsfds
-    band_min_wn               [array] sdfdsf
-    band_spectral_resolution  [array] fdsf
-
-    '''
+    #Retrieval object. Parameter defaults are set in settings.py
 
     def __init__(self):
 
