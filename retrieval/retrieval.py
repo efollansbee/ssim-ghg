@@ -31,7 +31,7 @@ ILS_width = 5.0
 
 
 class ForwardFunction:
-    def __init__(self,SNR=s.SNR,sza_0=s.sza_0,sza=s.sza,co2=s.co2_true,ch4=s.ch4_true,T=s.T_true,p=s.p_true,q=s.q_true,albedo=s.albedo_true,band_min_wn=s.band_min_wn,band_max_wn=s.band_max_wn,band_spectral_resolutions=s.band_spectral_resolutions,band_min_um=s.band_min_um,band_max_um=s.band_max_um,band_spectral_points=s.band_spectral_points,band_wn=s.band_wn,band_wl=s.band_wl,band_absco_res_wn=s.band_absco_res_wn,resolving_power_band=s.resolving_power_band,sigma_band=s.sigma_band,band_wn_index=s.band_wn_index,ILS_Gaussian_term=s.ILS_Gaussian_term,ILS_Gaussian_term_sum=s.ILS_Gaussian_term_sum,absco_data=None,band_molecules=s.band_molecules,P_aerosol=s.P_aerosol,ssa_aerosol=s.ssa_aerosol,qext_aerosol=s.qext_aerosol,height_aerosol=s.height_aerosol,tau_aerosol=None,measurement_error=False,jacobians=False):
+    def __init__(self,SNR=s.SNR,sza_0=s.sza_0,sza=s.sza,co2=s.co2_true,ch4=s.ch4_true,T=s.T_true,p=s.p_true,q=s.q_true,albedo=s.albedo_true,albedo_slope=s.albedo_slope_true,band_min_wn=s.band_min_wn,band_max_wn=s.band_max_wn,band_spectral_resolutions=s.band_spectral_resolutions,band_min_um=s.band_min_um,band_max_um=s.band_max_um,band_spectral_points=s.band_spectral_points,band_wn=s.band_wn,band_wl=s.band_wl,band_absco_res_wn=s.band_absco_res_wn,resolving_power_band=s.resolving_power_band,sigma_band=s.sigma_band,band_wn_index=s.band_wn_index,ILS_Gaussian_term=s.ILS_Gaussian_term,ILS_Gaussian_term_sum=s.ILS_Gaussian_term_sum,absco_data=None,band_molecules=s.band_molecules,P_aerosol=s.P_aerosol,ssa_aerosol=s.ssa_aerosol,qext_aerosol=s.qext_aerosol,height_aerosol=s.height_aerosol,tau_aerosol=None,measurement_error=False,jacobians=False):
 
 
         self.SNR = SNR
@@ -43,6 +43,7 @@ class ForwardFunction:
         self.p = p
         self.q = q
         self.albedo = albedo
+        self.albedo_slope = albedo_slope
         self.band_min_wn = band_min_wn
         self.band_max_wn = band_max_wn
         self.band_spectral_resolutions = band_spectral_resolutions
@@ -208,6 +209,7 @@ class ForwardFunction:
         #Calculate radiances for each band
         self.R_band = []
         self.R_band_albedo = []
+        self.R_band_albedo_slope = []
         self.R_band_aerosol = []
         self.R_band_q = []
         self.R_band_co2 = []
@@ -220,10 +222,10 @@ class ForwardFunction:
             else: 
               tau_aerosol_temp = np.zeros(len(self.band_absco_res_wn[i]))
 
-            I, I_albedo, I_aerosol, I_q, I_co2, I_ch4 = self.intensity(self.band_absco_res_wn[i],self.tau_star_band[i],self.tau_above_aerosol_star_band[i],self.tau_star_band_q[i],self.tau_above_aerosol_star_band_q[i],self.tau_star_band_co2[i],self.tau_above_aerosol_star_band_co2[i],self.tau_star_band_ch4[i],self.tau_above_aerosol_star_band_ch4[i],tau_aerosol_temp,self.ssa_aerosol[i],self.P_aerosol[i],self.qext_aerosol[0],self.qext_aerosol[i],self.mu,self.mu_0,self.m,self.albedo[i],self.band_solar_irradiances[i],self.jacobians)
+            I, I_albedo, I_albedo_slope, I_aerosol, I_q, I_co2, I_ch4 = self.intensity(self.band_absco_res_wn[i],self.tau_star_band[i],self.tau_above_aerosol_star_band[i],self.tau_star_band_q[i],self.tau_above_aerosol_star_band_q[i],self.tau_star_band_co2[i],self.tau_above_aerosol_star_band_co2[i],self.tau_star_band_ch4[i],self.tau_above_aerosol_star_band_ch4[i],tau_aerosol_temp,self.ssa_aerosol[i],self.P_aerosol[i],self.qext_aerosol[0],self.qext_aerosol[i],self.mu,self.mu_0,self.m,self.albedo[i],self.albedo_slope[i],self.band_solar_irradiances[i],self.jacobians)
             
             #Calculate the spectral response function (with and without multiplying by intensity)
-            Sc_I_band, Sc_I_band_albedo, Sc_I_band_aerosol, Sc_I_band_q, Sc_I_band_co2, Sc_I_band_ch4 = self.spectral_response_function(self.band_wn_index[i],self.band_absco_res_wn[i],self.sigma_band[i],self.ILS_Gaussian_term[i],I,I_albedo,I_aerosol,I_q,I_co2,I_ch4,self.jacobians)
+            Sc_I_band, Sc_I_band_albedo, Sc_I_band_albedo_slope, Sc_I_band_aerosol, Sc_I_band_q, Sc_I_band_co2, Sc_I_band_ch4 = self.spectral_response_function(self.band_wn_index[i],self.band_absco_res_wn[i],self.sigma_band[i],self.ILS_Gaussian_term[i],I,I_albedo,I_albedo_slope,I_aerosol,I_q,I_co2,I_ch4,self.jacobians)
 
             #Calculate radiance (Rc) by integrating intensity times ILS, and reverse to plot in micrometers
             Rc_band = (Sc_I_band/self.ILS_Gaussian_term_sum[i])[::-1]
@@ -231,6 +233,7 @@ class ForwardFunction:
             #For analytic Jacobians
             if jacobians:
               Rc_band_albedo = (Sc_I_band_albedo/self.ILS_Gaussian_term_sum[i])[::-1]
+              Rc_band_albedo_slope = (Sc_I_band_albedo_slope/self.ILS_Gaussian_term_sum[i])[::-1]
               Rc_band_aerosol = (Sc_I_band_aerosol/self.ILS_Gaussian_term_sum[i])[::-1]
               Rc_band_q = (Sc_I_band_q/self.ILS_Gaussian_term_sum[i][:,None])[::-1,:]
               Rc_band_co2 = (Sc_I_band_co2/self.ILS_Gaussian_term_sum[i][:,None])[::-1,:]
@@ -241,6 +244,7 @@ class ForwardFunction:
             if jacobians:
               #For analytic Jacobians
               self.R_band_albedo.append(Rc_band_albedo)
+              self.R_band_albedo_slope.append(Rc_band_albedo_slope)
               self.R_band_aerosol.append(Rc_band_aerosol)
               self.R_band_q.append(Rc_band_q)
               self.R_band_co2.append(Rc_band_co2)
@@ -249,6 +253,7 @@ class ForwardFunction:
         self.y = np.concatenate(self.R_band)
         if jacobians:
           self.y_albedo = np.concatenate(self.R_band_albedo)
+          self.y_albedo_slope = np.concatenate(self.R_band_albedo_slope)
           self.y_aerosol = np.concatenate(self.R_band_aerosol)
           self.y_q = np.concatenate(self.R_band_q)
           self.y_co2 = np.concatenate(self.R_band_co2)
@@ -281,10 +286,11 @@ class ForwardFunction:
 
 
     #Calculate intensities for a single band
-    def intensity(self,band,tau_star_band,tau_above_aerosol_star_band,tau_star_band_q,tau_above_aerosol_star_band_q,tau_star_band_co2,tau_above_aerosol_star_band_co2,tau_star_band_ch4,tau_above_aerosol_star_band_ch4,tau_aerosol,ssa_aerosol,P_aerosol,qext_aerosol_band_0,qext_aerosol,mu,mu_0,m,albedo,band_solar_irradiances,jacobians):
+    def intensity(self,band,tau_star_band,tau_above_aerosol_star_band,tau_star_band_q,tau_above_aerosol_star_band_q,tau_star_band_co2,tau_above_aerosol_star_band_co2,tau_star_band_ch4,tau_above_aerosol_star_band_ch4,tau_aerosol,ssa_aerosol,P_aerosol,qext_aerosol_band_0,qext_aerosol,mu,mu_0,m,albedo,albedo_slope,band_solar_irradiances,jacobians):
 
       I = np.zeros((len(band))) #wn
       I_albedo = np.zeros((len(band))) #wn x layers
+      I_albedo_slope = np.zeros((len(band))) #wn x layers
       I_aerosol = np.zeros((len(band))) #wn x layers
       I_q = np.zeros((len(band),tau_star_band_q.shape[1])) #wn x layers
       I_co2 = np.zeros((len(band),tau_star_band_q.shape[1])) #wn x layers
@@ -304,29 +310,33 @@ class ForwardFunction:
 
       for i in range(len(band)):
         #Add an aerosol layer. Assume it scatters once.
-        #Full qext scaling
-        I[i] = band_solar_irradiances/np.pi * (albedo*mu_0*exp_term[i] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu)
+
+        #Full qext scaling and albedo slope
+        I[i] = band_solar_irradiances/np.pi * ((albedo+albedo_slope*(band[i] - band[0]))*mu_0*exp_term[i] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu)
 
         #Calculate analytical Jacobians
         if jacobians:
           I_albedo[i] = band_solar_irradiances/np.pi * mu_0 * exp_term[i]
 
-          I_aerosol[i] = band_solar_irradiances/np.pi * (-m*qext_scaling[i]*albedo*mu_0*exp_term[i] + ssa_aerosol[i]*P_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu)
+          I_albedo_slope[i] = band_solar_irradiances/np.pi * (band[i] - band[0]) * mu_0 * exp_term[i]
+
+          I_aerosol[i] = band_solar_irradiances/np.pi * (-m*qext_scaling[i]*(albedo+albedo_slope*(band[i] - band[0]))*mu_0*exp_term[i] + ssa_aerosol[i]*P_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu)
 
           #Full qext scaling:
-          I_q[i,:] = band_solar_irradiances/np.pi * (albedo*mu_0*exp_term[i] * (-m) * tau_star_band_q[i,:] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu * (-m) * tau_above_aerosol_star_band_q[i,:])
-          I_co2[i,:] = band_solar_irradiances/np.pi * (-m*(albedo*mu_0*exp_term[i] * tau_star_band_co2[i,:] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu * tau_above_aerosol_star_band_co2[i,:]))
-          I_ch4[i,:] = band_solar_irradiances/np.pi * (-m*(albedo*mu_0*exp_term[i] * tau_star_band_ch4[i,:] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu * tau_above_aerosol_star_band_ch4[i,:]))
+          I_q[i,:] = band_solar_irradiances/np.pi * ((albedo+albedo_slope*(band[i] - band[0]))*mu_0*exp_term[i] * (-m) * tau_star_band_q[i,:] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu * (-m) * tau_above_aerosol_star_band_q[i,:])
+          I_co2[i,:] = band_solar_irradiances/np.pi * (-m*((albedo+albedo_slope*(band[i] - band[0]))*mu_0*exp_term[i] * tau_star_band_co2[i,:] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu * tau_above_aerosol_star_band_co2[i,:]))
+          I_ch4[i,:] = band_solar_irradiances/np.pi * (-m*((albedo+albedo_slope*(band[i] - band[0]))*mu_0*exp_term[i] * tau_star_band_ch4[i,:] + ssa_aerosol[i]*P_aerosol[i]*tau_aerosol[i]*qext_scaling[i]*exp_term_above_aerosol[i]/4./mu * tau_above_aerosol_star_band_ch4[i,:]))
 
-      return I, I_albedo, I_aerosol, I_q, I_co2, I_ch4
+      return I, I_albedo, I_albedo_slope, I_aerosol, I_q, I_co2, I_ch4
 
 
     #Assume a Gaussian ILS
-    def spectral_response_function(self,band_wn_index,band,sigma_band,ILS_Gaussian_term,I_band,I_band_albedo,I_band_aerosol,I_band_q,I_band_co2,I_band_ch4,jacobians):
+    def spectral_response_function(self,band_wn_index,band,sigma_band,ILS_Gaussian_term,I_band,I_band_albedo,I_band_albedo_slope,I_band_aerosol,I_band_q,I_band_co2,I_band_ch4,jacobians):
 
         Sc_I_band = np.zeros((len(band_wn_index))) #wn instrument
 
         Sc_I_band_albedo = np.zeros((len(band_wn_index))) #wn instrument
+        Sc_I_band_albedo_slope = np.zeros((len(band_wn_index))) #wn instrument
         Sc_I_band_aerosol = np.zeros((len(band_wn_index))) #wn instrument
         Sc_I_band_q = np.zeros((len(band_wn_index),I_band_q.shape[1])) #wn instrument x layers
         Sc_I_band_co2 = np.zeros((len(band_wn_index),I_band_co2.shape[1])) #wn instrument x layers
@@ -357,12 +367,13 @@ class ForwardFunction:
 
             if jacobians:
                 Sc_I_band_albedo[i] = np.sum(I_band_albedo[j_index_temp_lower:j_index_temp_upper] * ILS_Gaussian_term[i,j_index_temp_lower:j_index_temp_upper])
+                Sc_I_band_albedo_slope[i] = np.sum(I_band_albedo_slope[j_index_temp_lower:j_index_temp_upper] * ILS_Gaussian_term[i,j_index_temp_lower:j_index_temp_upper])
                 Sc_I_band_aerosol[i] = np.sum(I_band_aerosol[j_index_temp_lower:j_index_temp_upper] * ILS_Gaussian_term[i,j_index_temp_lower:j_index_temp_upper])
                 Sc_I_band_q[i,:] = np.sum(I_band_q[j_index_temp_lower:j_index_temp_upper,:] * ILS_Gaussian_term[i,j_index_temp_lower:j_index_temp_upper,None],axis=0)
                 Sc_I_band_co2[i,:] = np.sum(I_band_co2[j_index_temp_lower:j_index_temp_upper,:] * ILS_Gaussian_term[i,j_index_temp_lower:j_index_temp_upper,None],axis=0)
                 Sc_I_band_ch4[i,:] = np.sum(I_band_ch4[j_index_temp_lower:j_index_temp_upper,:] * ILS_Gaussian_term[i,j_index_temp_lower:j_index_temp_upper,None],axis=0)
 
-        return Sc_I_band, Sc_I_band_albedo, Sc_I_band_aerosol, Sc_I_band_q, Sc_I_band_co2, Sc_I_band_ch4
+        return Sc_I_band, Sc_I_band_albedo, Sc_I_band_albedo_slope, Sc_I_band_aerosol, Sc_I_band_q, Sc_I_band_co2, Sc_I_band_ch4
 
 
 class Retrieval:
@@ -531,14 +542,18 @@ class Retrieval:
             albedo_band_1 = x["ret"][5]
             albedo_band_2 = x["ret"][6]
             albedo_band_3 = x["ret"][7]
+            albedo_slope_band_1 = x["ret"][8]
+            albedo_slope_band_2 = x["ret"][9]
+            albedo_slope_band_3 = x["ret"][10]
             albedo = [albedo_band_1, albedo_band_2, albedo_band_3]
+            albedo_slope = [albedo_slope_band_1, albedo_slope_band_2, albedo_slope_band_3]
 
             #Set tau_aerosol appropriately
-            if "Aerosol Optical Depth" in x["names"]: tau_aerosol = x["ret"][8]
+            if "Aerosol Optical Depth" in x["names"]: tau_aerosol = x["ret"][11]
             else: tau_aerosol = None
 
             #Call the foward function with info from the prior and the updated state vector elements
-            model = ForwardFunction(SNR=model_prior.SNR,sza_0=model_prior.sza_0,sza=model_prior.sza,co2=co2,ch4=ch4,T=T,p=p,q=q,albedo=albedo,band_min_wn=model_prior.band_min_wn,band_max_wn=model_prior.band_max_wn,band_spectral_resolutions=model_prior.band_spectral_resolutions,band_min_um=model_prior.band_min_um,band_max_um=model_prior.band_max_um,band_spectral_points=model_prior.band_spectral_points,band_wn=model_prior.band_wn,band_wl=model_prior.band_wl,band_absco_res_wn=model_prior.band_absco_res_wn,resolving_power_band=model_prior.resolving_power_band,sigma_band=model_prior.sigma_band,band_wn_index=model_prior.band_wn_index,ILS_Gaussian_term=model_prior.ILS_Gaussian_term,ILS_Gaussian_term_sum=model_prior.ILS_Gaussian_term_sum,absco_data=absco_data,band_molecules=model_prior.band_molecules,P_aerosol=model_prior.P_aerosol,ssa_aerosol=model_prior.ssa_aerosol,qext_aerosol=model_prior.qext_aerosol,height_aerosol=model_prior.height_aerosol,tau_aerosol=tau_aerosol,jacobians=jacobians)
+            model = ForwardFunction(SNR=model_prior.SNR,sza_0=model_prior.sza_0,sza=model_prior.sza,co2=co2,ch4=ch4,T=T,p=p,q=q,albedo=albedo,albedo_slope=albedo_slope,band_min_wn=model_prior.band_min_wn,band_max_wn=model_prior.band_max_wn,band_spectral_resolutions=model_prior.band_spectral_resolutions,band_min_um=model_prior.band_min_um,band_max_um=model_prior.band_max_um,band_spectral_points=model_prior.band_spectral_points,band_wn=model_prior.band_wn,band_wl=model_prior.band_wl,band_absco_res_wn=model_prior.band_absco_res_wn,resolving_power_band=model_prior.resolving_power_band,sigma_band=model_prior.sigma_band,band_wn_index=model_prior.band_wn_index,ILS_Gaussian_term=model_prior.ILS_Gaussian_term,ILS_Gaussian_term_sum=model_prior.ILS_Gaussian_term_sum,absco_data=absco_data,band_molecules=model_prior.band_molecules,P_aerosol=model_prior.P_aerosol,ssa_aerosol=model_prior.ssa_aerosol,qext_aerosol=model_prior.qext_aerosol,height_aerosol=model_prior.height_aerosol,tau_aerosol=tau_aerosol,jacobians=jacobians)
 
             #Calculate analytical derivative
             model.y_k = np.zeros((len(model.y),len(x["ret"])))
@@ -552,7 +567,10 @@ class Retrieval:
                 model.y_k[:,5] = np.concatenate((model.R_band_albedo[0],np.zeros((len(model.R_band_albedo[1]))),np.zeros((len(model.R_band_albedo[2]))))) #Band 1 albedo
                 model.y_k[:,6] = np.concatenate((np.zeros((len(model.R_band_albedo[0]))),model.R_band_albedo[1],np.zeros((len(model.R_band_albedo[2]))))) #Band 2 albedo
                 model.y_k[:,7] = np.concatenate((np.zeros((len(model.R_band_albedo[0]))),np.zeros((len(model.R_band_albedo[1]))),model.R_band_albedo[2])) #Band 3 albedo
-                if "Aerosol Optical Depth" in x["names"]: model.y_k[:,8] = model.y_aerosol #tau_aerosol
+                model.y_k[:,8] = np.concatenate((model.R_band_albedo_slope[0],np.zeros((len(model.R_band_albedo_slope[1]))),np.zeros((len(model.R_band_albedo_slope[2]))))) #Band 1 albedo slope
+                model.y_k[:,9] = np.concatenate((np.zeros((len(model.R_band_albedo_slope[0]))),model.R_band_albedo_slope[1],np.zeros((len(model.R_band_albedo_slope[2]))))) #Band 2 albedo slope
+                model.y_k[:,10] = np.concatenate((np.zeros((len(model.R_band_albedo_slope[0]))),np.zeros((len(model.R_band_albedo_slope[1]))),model.R_band_albedo_slope[2])) #Band 3 albedo slope
+                if "Aerosol Optical Depth" in x["names"]: model.y_k[:,11] = model.y_aerosol #tau_aerosol
 
         #CO2-only run
         elif "CO2 Profile Scale Factor" in x["names"] and "CH4 Profile Scale Factor" not in x["names"]:
@@ -562,10 +580,12 @@ class Retrieval:
             q = model_prior.q * x["ret"][3]
             albedo_band_2 = x["ret"][4]
             albedo = [albedo_band_2]
+            albedo_slope_band_2 = x["ret"][5]
+            albedo_slope = [albedo_slope_band_2]
             tau_aerosol = None
 
             #Call the foward function with info from the prior and the updated state vector elements
-            model = ForwardFunction(SNR=model_prior.SNR,sza_0=model_prior.sza_0,sza=model_prior.sza,co2=co2,ch4=np.zeros(len(model_prior.ch4)),T=T,p=p,q=q,albedo=albedo,band_min_wn=model_prior.band_min_wn,band_max_wn=model_prior.band_max_wn,band_spectral_resolutions=model_prior.band_spectral_resolutions,band_min_um=model_prior.band_min_um,band_max_um=model_prior.band_max_um,band_spectral_points=model_prior.band_spectral_points,band_wn=model_prior.band_wn,band_wl=model_prior.band_wl,band_absco_res_wn=model_prior.band_absco_res_wn,resolving_power_band=model_prior.resolving_power_band,sigma_band=model_prior.sigma_band,band_wn_index=model_prior.band_wn_index,ILS_Gaussian_term=model_prior.ILS_Gaussian_term,ILS_Gaussian_term_sum=model_prior.ILS_Gaussian_term_sum,absco_data=absco_data,band_molecules=model_prior.band_molecules,P_aerosol=model_prior.P_aerosol,ssa_aerosol=model_prior.ssa_aerosol,qext_aerosol=model_prior.qext_aerosol,height_aerosol=model_prior.height_aerosol,tau_aerosol=tau_aerosol,jacobians=jacobians)
+            model = ForwardFunction(SNR=model_prior.SNR,sza_0=model_prior.sza_0,sza=model_prior.sza,co2=co2,ch4=np.zeros(len(model_prior.ch4)),T=T,p=p,q=q,albedo=albedo,albedo_slope=albedo_slope,band_min_wn=model_prior.band_min_wn,band_max_wn=model_prior.band_max_wn,band_spectral_resolutions=model_prior.band_spectral_resolutions,band_min_um=model_prior.band_min_um,band_max_um=model_prior.band_max_um,band_spectral_points=model_prior.band_spectral_points,band_wn=model_prior.band_wn,band_wl=model_prior.band_wl,band_absco_res_wn=model_prior.band_absco_res_wn,resolving_power_band=model_prior.resolving_power_band,sigma_band=model_prior.sigma_band,band_wn_index=model_prior.band_wn_index,ILS_Gaussian_term=model_prior.ILS_Gaussian_term,ILS_Gaussian_term_sum=model_prior.ILS_Gaussian_term_sum,absco_data=absco_data,band_molecules=model_prior.band_molecules,P_aerosol=model_prior.P_aerosol,ssa_aerosol=model_prior.ssa_aerosol,qext_aerosol=model_prior.qext_aerosol,height_aerosol=model_prior.height_aerosol,tau_aerosol=tau_aerosol,jacobians=jacobians)
 
             #Calculate analytical derivative
             model.y_k = np.zeros((len(model.y),len(x["ret"])))
@@ -576,6 +596,7 @@ class Retrieval:
                 #model.y_k[:,2] #Calculate using finite differencing #p
                 model.y_k[:,3] = np.sum(model_prior.q_layer[None,:] * model.y_q, axis=1) #q
                 model.y_k[:,4] = model.R_band_albedo[0] #Band 2 albedo. 0th index in this case.
+                model.y_k[:,5] = model.R_band_albedo_slope[0] #Band 2 albedo slope. 0th index in this case.
 
         #CH4-only run
         elif "CO2 Profile Scale Factor" not in x["names"] and "CH4 Profile Scale Factor" in x["names"]:
@@ -585,10 +606,12 @@ class Retrieval:
             q = model_prior.q * x["ret"][3]
             albedo_band_3 = x["ret"][4]
             albedo = [albedo_band_3]
+            albedo_slope_band_3 = x["ret"][5]
+            albedo_slope = [albedo_slope_band_3]
             tau_aerosol = None
 
             #Call the foward function with info from the prior and the updated state vector elements
-            model = ForwardFunction(SNR=model_prior.SNR,sza_0=model_prior.sza_0,sza=model_prior.sza,co2=np.zeros(len(model_prior.co2)),ch4=ch4,T=T,p=p,q=q,albedo=albedo,band_min_wn=model_prior.band_min_wn,band_max_wn=model_prior.band_max_wn,band_spectral_resolutions=model_prior.band_spectral_resolutions,band_min_um=model_prior.band_min_um,band_max_um=model_prior.band_max_um,band_spectral_points=model_prior.band_spectral_points,band_wn=model_prior.band_wn,band_wl=model_prior.band_wl,band_absco_res_wn=model_prior.band_absco_res_wn,resolving_power_band=model_prior.resolving_power_band,sigma_band=model_prior.sigma_band,band_wn_index=model_prior.band_wn_index,ILS_Gaussian_term=model_prior.ILS_Gaussian_term,ILS_Gaussian_term_sum=model_prior.ILS_Gaussian_term_sum,absco_data=absco_data,band_molecules=model_prior.band_molecules,P_aerosol=model_prior.P_aerosol,ssa_aerosol=model_prior.ssa_aerosol,qext_aerosol=model_prior.qext_aerosol,height_aerosol=model_prior.height_aerosol,tau_aerosol=tau_aerosol,jacobians=jacobians)
+            model = ForwardFunction(SNR=model_prior.SNR,sza_0=model_prior.sza_0,sza=model_prior.sza,co2=np.zeros(len(model_prior.co2)),ch4=ch4,T=T,p=p,q=q,albedo=albedo,albedo_slope=albedo_slope,band_min_wn=model_prior.band_min_wn,band_max_wn=model_prior.band_max_wn,band_spectral_resolutions=model_prior.band_spectral_resolutions,band_min_um=model_prior.band_min_um,band_max_um=model_prior.band_max_um,band_spectral_points=model_prior.band_spectral_points,band_wn=model_prior.band_wn,band_wl=model_prior.band_wl,band_absco_res_wn=model_prior.band_absco_res_wn,resolving_power_band=model_prior.resolving_power_band,sigma_band=model_prior.sigma_band,band_wn_index=model_prior.band_wn_index,ILS_Gaussian_term=model_prior.ILS_Gaussian_term,ILS_Gaussian_term_sum=model_prior.ILS_Gaussian_term_sum,absco_data=absco_data,band_molecules=model_prior.band_molecules,P_aerosol=model_prior.P_aerosol,ssa_aerosol=model_prior.ssa_aerosol,qext_aerosol=model_prior.qext_aerosol,height_aerosol=model_prior.height_aerosol,tau_aerosol=tau_aerosol,jacobians=jacobians)
 
             #Calculate analytical derivative
             model.y_k = np.zeros((len(model.y),len(x["ret"])))
@@ -599,6 +622,7 @@ class Retrieval:
                 #model.y_k[:,2] #Calculate using finite differencing #p
                 model.y_k[:,3] = np.sum(model_prior.q_layer[None,:] * model.y_q, axis=1) #q
                 model.y_k[:,4] = model.R_band_albedo[0] #Band 3 albedo. 0th index in this case.
+                model.y_k[:,5] = model.R_band_albedo_slope[0] #Band 3 albedo slope. 0th index in this case.
 
         else: 
           print("Unexpected state vector setup!")
