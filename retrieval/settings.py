@@ -71,7 +71,7 @@ T_prior_uncert = 5 #K
 p_prior_uncert = 0.1 #10%
 q_prior_uncert = 0.1 #10%
 albedo_uncert = [0.2,0.2,0.2]
-albedo_slope_uncert = [0.001,0.001,0.001]
+albedo_slope_uncert = [1e-10,1e-10,1e-10] #Fix it at the truth by default
 tau_aerosol_prior_uncert = 0.5
 
 #Create a prior covariance matrix (no aerosols by default)
