@@ -1,3 +1,42 @@
+#-- SETUP
+setup = function()
+{
+       
+###############################################
+#-- Required Libraries
+###############################################
+
+require(ncdf4,warn.conflicts = FALSE)
+require(plyr,warn.conflicts = FALSE)
+require(dplyr,warn.conflicts = FALSE)
+require(parallel,warn.conflicts = FALSE)
+require(ggplot2,warn.conflicts = FALSE)
+require(abind,warn.conflicts = FALSE)
+require(Matrix,warn.conflicts = FALSE)
+require(lattice,warn.conflicts = FALSE)
+require(memuse,warn.conflicts = FALSE)
+require(EnvStats,warn.conflicts = FALSE)
+require(gridExtra,warn.conflicts = FALSE)
+require(mvtnorm,warn.conflicts = FALSE)
+require(plotly,warn.conflicts = FALSE)
+
+    
+###############################################
+#-- Load Code
+##############################################
+source(file.path(Rcode_dir,"plot_concentrations.R"))
+source(file.path(Rcode_dir,"inversion_032024.R"))
+source(file.path(Rcode_dir,"write_inversion_2_netcdf_032024.R"))
+source(file.path(Rcode_dir,"generate_transcom_flux_ensemble_from_inversion.R"))
+
+########################
+#--  Detect Cores
+########################
+print(paste("Num CPUs:",detectCores(),"cores"))
+memuse::Sys.meminfo()
+}
+    
+
 #-- Create the true flux field from prior and true state vector
 
 pull_true_transcom_flux = function(prior_flux_file,state_true)
@@ -349,7 +388,7 @@ plot_transcom_flux_by_month = function(ret){
 }
 
 #-- Use this to control plot size
-plot_timeseries_flux_bytranscom = function(ret)
+plot_timeseries_flux_bytranscom = function(ret,include_prior_ocn_land=FALSE,include_fossil_biofires=FALSE)
 {
 
   mat_table = data.frame(NUMBER=1:22,NAME=transcom_names)
@@ -600,3 +639,157 @@ parse.obspack_id <- function(x) {
   return(info)
 } 
 
+
+plot_Jacobian_cols_observations = function(transcom_region=2,month=12,
+                                           site_strings=c("brw_surface-insitu","mlo_surface-flask","smo_surface-insitu",
+                                                          "co2_spo_surface-flask",
+                                                          "lef","wkt","wbi","nwr","hun","cgo","cpt"),plot_fossil_instead=FALSE,
+                                          plot_fires_instead=FALSE)
+{
+  month_string = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
+                   "2016-09","2016-10","2016-11","2016-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  
+  if(transcom_region <= 11){state_ind = paste("nee_regionRegion",pad(transcom_region,width=2,fill="0"),"_month",month_string[month],sep="")}
+   if(transcom_region > 11){state_ind = paste("ocean_regionRegion",pad(transcom_region,width=2,fill="0"),"_month",month_string[month],sep="")} 
+  print(state_ind)
+  if(!plot_fossil_instead & !plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H[,state_ind])
+  }
+  if(!plot_fossil_instead & plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H_bgd[,2])
+  }
+  if(plot_fossil_instead & !plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H_bgd[,3])
+  }
+  if(plot_fossil_instead & plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H_bgd[,2] + H_bgd[,3])
+  }
+                  #VALUE=c(ret2$posterior$inputs$obs + pr,
+                  #        ret2$prior$outputs$modeled_obs + pr,
+                  #        ret2$posterior$outputs$modeled_obs + pr),
+                  #TYPE=c(rep("OBS",dim(obs_catalog)[1]),
+                  #       rep("PRIOR",dim(obs_catalog)[1]),
+                  #       rep("POSTERIOR",dim(obs_catalog)[1])))
+  
+  #df$TYPE =factor(df$TYPE)
+  #df$VALUE = as.numeric(df$VALUE)
+  
+  for(i in 1:length(site_strings))
+  {
+    ind = 1:length(df$ID) %in% grep(site_strings[i],df$ID)
+  
+    df2 = df[ind,]
+    
+    options(repr.plot.width=20, repr.plot.height=8)
+    
+    g =  ggplot(df2, aes(x = DATE, y = VALUE)) + 
+      #scale_color_manual(values = c("blue","red","black")) +
+      geom_point(size = 0.5) + 
+      #geom_smooth(method = "lm", formula = y ~ poly(x, 12), se = FALSE) +
+      labs(title=paste(site_strings[i],"Time series"),x ="Date", y = "CO2") + 
+      theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"),
+            title=element_text(size=16),legend.text=element_text(size=14))
+    
+    print(g)
+  }
+}
+
+plot_Jacobian_rows_fluxes = function(row_number){
+
+  load(file.path(data_dir,"obs/obs_catalog_042424_unit_pulse_hour_timestamp_witherrors_withdates.rda")) 
+
+   print(obs_catalog[row_number,c("TYPE","ID","LON","LAT","DATE")])
+    
+   month_string = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
+                 "2015-09","2015-10","2015-11","2015-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  
+  for(i in 1:22)
+  {
+    transcom_regs_dims = sapply(dimnames(H)[[2]],FUN=function(x){gsub("regionRegion","",strsplit(x,"_")[[1]][2])})
+    transcom_ind = transcom_regs_dims == pad(i,width=2,fill="0")
+    
+    df2 = H[row_number,transcom_ind]
+    ord = order(names(df2))
+    df2 = df2[ord]
+    
+    options(repr.plot.width=20, repr.plot.height=8)
+
+#-- Transcom region labels for regions 1:22
+transcom_names = c("North American Boreal    ", "North American Temperate ",
+                   "South American Tropical  ", "South American Temperate ",
+                   "Northern Africa          ", "Southern Africa          ",
+                   "Eurasia Boreal           ", "Eurasia Temperate        ",
+                   "Tropical Asia            ", "Australia                ",
+                   "Europe                   ", "North Pacific Temperate  ",
+                   "West Pacific Tropical    ", "East Pacific Tropical    ",
+                   "South Pacific Temperate  ", "Northern Ocean           ",
+                   "North Atlantic Temperate ", "Atlantic Tropical        ",
+                   "South Atlantic Temperate ", "Southern Ocean           ",
+                   "Indian Tropical          ", "South Indian Temperate   ")
+      
+    plot(1:24,as.numeric(df2),xaxt="n",ylab="sensitivity (ppm CO2) per flux region/month",
+        xlab="Time",main=paste("Sensitivity of observation to a monthly flux from",gsub(" ","",transcom_names[i]),"at the given month"))
+    grid()
+    axis(side=1,at=1:24,labels=month_string)
+  }
+}
+
+
+plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
+  #-- Transcom region labels for regions 1:22
+  transcom_names = c("North American Boreal    ", "North American Temperate ",
+                     "South American Tropical  ", "South American Temperate ",
+                     "Northern Africa          ", "Southern Africa          ",
+                     "Eurasia Boreal           ", "Eurasia Temperate        ",
+                     "Tropical Asia            ", "Australia                ",
+                     "Europe                   ", "North Pacific Temperate  ",
+                     "West Pacific Tropical    ", "East Pacific Tropical    ",
+                     "South Pacific Temperate  ", "Northern Ocean           ",
+                     "North Atlantic Temperate ", "Atlantic Tropical        ",
+                     "South Atlantic Temperate ", "Southern Ocean           ",
+                     "Indian Tropical          ", "South Indian Temperate   ")
+  
+  
+  dts = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
+                            "2015-09","2015-10","2015-11","2015-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  require(ncdf4)
+  
+  for(i in 1:length(month)){
+    for(j in 1:length(transcom_region)){
+     f = nc_open(file.path(data_dir,"priors/sib4_NEE_pulses.nc4"))
+     flx = ncvar_get(f,"NEE",start=c(1,1,transcom_region[j],month[i]),count=c(-1,-1,1,1))
+     #-- I'm not positive but I've had to scale CO2 output by 12/44 and it might be needed here too
+     #-- haven't identified where the issue is...
+     flx = flx * 12/44
+     nc_close(f)
+     library(maps)
+     w = map("world",plot = FALSE)
+     grd = expand.grid(longitude=seq(-180,177.5,by=5),latitude=c(-89,seq(-86,86,by=4),89))
+     grd$z = as.vector(flx)
+     require(lattice)
+     print(levelplot(z ~ longitude + latitude,data=grd,
+                 xlab="",ylab="",
+                 #col.regions=ferret.palette("broad"),
+                 col.regions=ferret.palette("light_centered"),
+                 at=seq(-max(abs(grd$z)),max(abs(grd$z)),length=63),
+                 aspect="fill",useRaster=TRUE,
+                 scales=list(x=list(draw=FALSE),y=list(draw=FALSE)),
+                 main=paste("Avg NEE Flux (CO2), umolC/m2/sec for ",transcom_names[transcom_region[j]]," ",dts[month[i]],sep=""),
+                 panel = function(x,y,z,...)
+                 {
+                   #llines(mm$x,mm$y,col="black",lty=1,lwd=3)
+                   #llines(w$x,w$y,col="bl",lty=1,lwd=2)
+                   panel.levelplot(x,y,z,...)
+                   llines(w$x,w$y,col="black",lty=1,lwd=2)
+                 }))
+    }
+  }
+}
