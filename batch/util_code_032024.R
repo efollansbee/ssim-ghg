@@ -894,3 +894,23 @@ print(plt4)
 print(plt5)
 
 }
+
+pad = function (x, width, fill = " ", left = TRUE) 
+{
+  xneg = FALSE
+  nc = nchar(x)
+  if (width > nc) {
+    if (left) {
+      str = paste(paste(rep(fill, width - nc), collapse = ""), 
+                  x, sep = "")
+    }
+    else {
+      str = paste(x, paste(rep(fill, width - nc), collapse = ""), 
+                  sep = "")
+    }
+  }
+  else {
+    str = x
+  }
+  return(str)
+}
