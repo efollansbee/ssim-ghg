@@ -606,7 +606,7 @@ plot_inversion_correlations_by_transcom = function(org_data)
   p2 = levelplot(post_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main=paste("Posterior Correlation in Month to Month flux for",transcom_names[i]),scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  print(marrangeGrob(list(p1,p2),nrow=1,ncol=2))
+  marrangeGrob(list(p1,p2),nrow=1,ncol=2)
   }
   
   lapply(1:22,FUN=plt)
