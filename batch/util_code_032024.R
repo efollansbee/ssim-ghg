@@ -348,7 +348,7 @@ plot_transcom_flux_by_month = function(ret){
     
     
     
-    print(g)
+    plot(g)
     
   }
   
@@ -384,7 +384,7 @@ plot_transcom_flux_by_month = function(ret){
   
   
   
-  print(g)
+  plot(g)
 }
 
 #-- Use this to control plot size
@@ -434,7 +434,7 @@ plot_timeseries_flux_bytranscom = function(ret,include_prior_ocn_land=FALSE,incl
     ylab("PgC/year") +
     theme(axis.text.x = element_text(angle=70,size=15))
   
-  print(h)
+  plot(h)
   ###############################################
   
   
@@ -456,7 +456,7 @@ plot_timeseries_flux_bytranscom = function(ret,include_prior_ocn_land=FALSE,incl
     ylab("PgC/month") +
     theme(axis.text.x = element_text(angle=70,size=15))
   
-  print(h2)
+  plot(h2)
   ###############################################    
   
   
@@ -553,25 +553,67 @@ plot_inversion_correlations = function(org_data)
   diag(prior_cor_flux) = NA
   diag(post_time_cor_flux) = NA
   diag(prior_time_cor_flux) = NA
-  
+
   rng1 = max(abs(c(as.vector(prior_cor_flux),c(as.vector(post_cor_flux)))),na.rm=TRUE)
   rng2 = max(abs(c(as.vector(prior_time_cor_flux),c(as.vector(post_time_cor_flux)))),na.rm=TRUE)
   
   options(repr.plot.width = 20, repr.plot.height = 20)
   
-  p1 = levelplot(prior_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main="Prior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
+  p1 = levelplot(prior_cor_flux,col.regions=my.col(40),
+                 at=seq(-rng1,rng1,length=40),main="Prior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  p2 = levelplot(post_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main="Posterior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
+  p2 = levelplot(post_cor_flux,col.regions=my.col(40),at=seq(-rng1,rng1,length=40),main="Posterior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  p3 = levelplot(prior_time_cor_flux,col.regions=my.col(20),at=seq(-rng2,rng2,length=20),main="Prior Correlation in time in global flux",scales=list(x=list(rot=60)),
+  p3 = levelplot(prior_time_cor_flux,col.regions=my.col(40),at=seq(-rng2,rng2,length=40),main="Prior Correlation in time in global flux",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  p4 = levelplot(post_time_cor_flux,col.regions=my.col(20),at=seq(-rng2,rng2,length=20),main="Posterior Correlation in time in global flux ",scales=list(x=list(rot=60)),
+  p4 = levelplot(post_time_cor_flux,col.regions=my.col(40),at=seq(-rng2,rng2,length=40),main="Posterior Correlation in time in global flux ",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
   marrangeGrob(list(p1,p2,p3,p4),nrow=2,ncol=2)
+}
+
+
+plot_inversion_correlations_by_transcom = function(org_data)
+{
+  dts = c("Sep 2014","Oct 2014","Nov 2014","Dec 2014","Jan 2015","Feb 2015","Mar 2015","Apr 2015",
+          "May 2015","Jun 2015","Jul 2015","Aug 2015","Sep 2015","Oct 2015","Nov 2015","Dec 2015",
+          "Jan 2016","Feb 2016","Mar 2016","Apr 2016",
+          "May 2016","Jun 2016","Jul 2016","Aug 2016")
+  
+  #-- I had to modify this code from for loop where the normal print(trellis.object)
+  #-- didn't seem to work on GHG Jupyter Hub but was fine localhost, probably subtle
+  #-- issue w/ plotting engine?
+  
+  plt = function(i){
+    transcom_subset_post = t(org_data$post_tr_monthly[,,i])
+    transcom_subset_prior = t(org_data$prior_tr_monthly[,,i])
+    
+    post_cor_flux = cor(transcom_subset_post)
+    prior_cor_flux = cor(transcom_subset_prior)
+    dimnames(post_cor_flux) = list(dts,dts)
+    dimnames(prior_cor_flux) = list(dts,dts)
+    
+    diag(post_cor_flux) = NA
+    diag(prior_cor_flux) = NA
+    
+    rng1 = max(abs(c(as.vector(prior_cor_flux),c(as.vector(post_cor_flux)))),na.rm=TRUE)
+    
+    options(repr.plot.width = 20, repr.plot.height = 20)
+    
+    p1 = levelplot(prior_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main=paste("Prior Correlation in Month to Month flux for",transcom_names[i]),scales=list(x=list(rot=60)),
+                   xlab="",ylab="")
+    
+    p2 = levelplot(post_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main=paste("Posterior Correlation in Month to Month flux for",transcom_names[i]),scales=list(x=list(rot=60)),
+                   xlab="",ylab="")
+    
+    marrangeGrob(list(p1,p2),nrow=1,ncol=2)
+  }
+
+  lapply(1:22,FUN=plt)
+
 }
 
 plot_inversion_correlations_by_transcom = function(org_data)
@@ -604,7 +646,8 @@ plot_inversion_correlations_by_transcom = function(org_data)
   p2 = levelplot(post_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main=paste("Posterior Correlation in Month to Month flux for",transcom_names[i]),scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  print(marrangeGrob(list(p1,p2),nrow=1,ncol=2))
+  ppp=marrangeGrob(list(p1,p2),nrow=1,ncol=2)
+  print(ppp)
   }
 
 }
@@ -698,7 +741,7 @@ plot_Jacobian_cols_observations = function(transcom_region=2,month=12,
       theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"),
             title=element_text(size=16),legend.text=element_text(size=14))
     
-    print(g)
+    plot(g)
   }
 }
 
@@ -792,4 +835,101 @@ plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
                  }))
     }
   }
+}
+
+
+plot_flux_maps_annual_prior_post = function(prior_file_nc="/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_prior.nc4",
+                                            posterior_file_nc="/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_posterior.nc4"){
+
+fil_prior = nc_open("/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_prior.nc4")
+prior_flux_samples = ncvar_get(fil_prior,"flux_samples")
+prior_flux_mean_sampled = apply(prior_flux_samples,c(1,2,3),mean)
+prior_flux_mean_analytical = ncvar_get(fil_prior,"flux_mean")
+prior_flux_sd_sampled = apply(prior_flux_samples,c(1,2,3),sd)
+prior_flux_annual_flux_mean_analytical = apply(prior_flux_mean_analytical,c(1,2),sum)*1/2
+prior_flux_annual_flux_mean_sampled = apply(prior_flux_samples,c(1,2),sum)*1/2
+prior_flux_annual_flux_sd_sampled = apply(apply(prior_flux_samples,c(1,2,4),sum)*1/2,c(1,2),sd)
+
+rng_mn_prior = range(prior_flux_annual_flux_mean_analytical)
+rng_sd_prior = range(prior_flux_annual_flux_sd_sampled)
+
+fil_posterior = nc_open("/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_posterior.nc4")
+posterior_flux_samples = ncvar_get(fil_posterior,"flux_samples")
+posterior_flux_mean_sampled = apply(posterior_flux_samples,c(1,2,3),mean)
+posterior_flux_mean_analytical = ncvar_get(fil_posterior,"flux_mean")
+posterior_flux_sd_sampled = apply(posterior_flux_samples,c(1,2,3),sd)
+posterior_flux_annual_flux_mean_analytical = apply(posterior_flux_mean_analytical,c(1,2),sum)*1/2
+posterior_flux_annual_flux_mean_sampled = apply(posterior_flux_samples,c(1,2),sum)*1/2
+posterior_flux_annual_flux_sd_sampled = apply(apply(posterior_flux_samples,c(1,2,4),sum)*1/2,c(1,2),sd)
+
+prior_flux_annual_flux_reduction_error_sampled = 1 - (posterior_flux_annual_flux_sd_sampled/prior_flux_annual_flux_sd_sampled)
+prior_flux_annual_flux_reduction_error_sampled[is.na(prior_flux_annual_flux_reduction_error_sampled)] = 0
+
+rng_mn_posterior = range(posterior_flux_annual_flux_mean_analytical)
+rng_sd_posterior = range(posterior_flux_annual_flux_sd_sampled)
+rng_sd_reduction = range(prior_flux_annual_flux_reduction_error_sampled)
+
+library(maps)
+w = map("world",plot=FALSE)
+
+grd = expand.grid(longitude=fil_prior$dim$longitude$vals,latitude=fil_prior$dim$latitude$vals)
+
+#-- units need to go from kgCO2/m2/sec to gC/m2/yr, 
+units_scaling = 1e3*12/44*3600*24*30.5
+grd$prior.mean = as.vector(prior_flux_annual_flux_mean_analytical)*units_scaling
+grd$posterior.mean = as.vector(posterior_flux_annual_flux_mean_analytical)*units_scaling
+grd$prior.sd = as.vector(prior_flux_annual_flux_sd_sampled)*units_scaling
+grd$posterior.sd = as.vector(posterior_flux_annual_flux_sd_sampled)*units_scaling
+grd$reduction.sd = as.vector(prior_flux_annual_flux_reduction_error_sampled)
+
+rng_mn_prior = rng_mn_prior * units_scaling
+rng_sd_prior = rng_sd_prior * units_scaling
+rng_mn_posterior = rng_mn_posterior * units_scaling
+rng_sd_posterior = rng_sd_posterior * units_scaling
+rng_sd_reduction = rng_sd_reduction 
+
+plt1 = levelplot(prior.mean ~ longitude + latitude,data=grd,col.regions=my.col(50),
+                 at=seq(-max(abs(c(rng_mn_prior,rng_mn_posterior))),max(abs(c(rng_mn_prior,rng_mn_posterior))),length=50),
+                 main=c("Annual Prior Mean Flux (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                         panel.levelplot(..., at = at, contour = contour,labels = labels)
+                         llines(w$x,w$y,col="black")}
+)
+
+plt2 = levelplot(posterior.mean ~ longitude + latitude,data=grd,col.regions=my.col(50),cuts=50,
+                 at=seq(-max(abs(c(rng_mn_prior,rng_mn_posterior))),max(abs(c(rng_mn_prior,rng_mn_posterior))),length=50),
+                 main=c("Annual Posterior Mean Flux (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+plt3 = levelplot(prior.sd ~ longitude + latitude,data=grd,col.regions=my.col(100)[51:100],cuts=50,
+                 at=seq(0,max(abs(c(rng_sd_prior,rng_sd_posterior))),length=50),
+                 main=c("Annual Prior Flux Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+plt4 = levelplot(posterior.sd ~ longitude + latitude,data=grd,col.regions=my.col(100)[51:100],cuts=50,
+                 at=seq(0,max(abs(c(rng_sd_prior,rng_sd_posterior))),length=50),
+                 main=c("Annual Posterior Flux Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+plt5 = levelplot(reduction.sd ~ longitude + latitude,data=grd,col.regions=my.col(50),cuts=50,
+                 at=seq(-max(abs(c(rng_sd_reduction))),max(abs(c(rng_sd_reduction))),length=50),
+                 main=c("Annual Flux Reduction in Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+options(jupyter.plot_scale=1)
+
+print(plt1)
+print(plt2)
+print(plt3)
+print(plt4)
+print(plt5)
+
 }
