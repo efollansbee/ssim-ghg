@@ -748,6 +748,9 @@ transcom_names = c("North American Boreal    ", "North American Temperate ",
 
 
 plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
+  
+  old_opt = options()
+  options(repr.plot.width=12, repr.plot.height=8)
   #-- Transcom region labels for regions 1:22
   transcom_names = c("North American Boreal    ", "North American Temperate ",
                      "South American Tropical  ", "South American Temperate ",
@@ -782,7 +785,7 @@ plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
      print(levelplot(z ~ longitude + latitude,data=grd,
                  xlab="",ylab="",
                  #col.regions=ferret.palette("broad"),
-                 col.regions=ferret.palette("light_centered"),
+                 col.regions=ferret_light_centered_palette_63,
                  at=seq(-max(abs(grd$z)),max(abs(grd$z)),length=63),
                  aspect="fill",useRaster=TRUE,
                  scales=list(x=list(draw=FALSE),y=list(draw=FALSE)),
@@ -914,3 +917,18 @@ pad = function (x, width, fill = " ", left = TRUE)
   }
   return(str)
 }
+
+ferret_light_centered_palette_63 = c("#00FFFFFF", "#03F4FFFF", "#05E9FFFF", "#08DEFFFF", "#0BD3FFFF",
+                                     "#0EC8FFFF", "#10BDFFFF", "#13B2FFFF", "#16A7FFFF",
+                                     "#199CFFFF", "#1B91FFFF", "#1E86FFFF", "#217BFFFF", 
+                                     "#2470FFFF", "#2665FFFF", "#295AFFFF", "#2C50FFFF", "#2F45FFFF",
+                                     "#313AFFFF", "#3A3AFFFF", "#4A4AFFFF", "#5A5AFFFF", "#6B6BFFFF",
+                                     "#7B7BFFFF", "#8C8CFFFF", "#9C9CFFFF", "#ADADFFFF",
+                                     "#BDBDFFFF", "#CECEFFFF", "#DEDEFFFF", "#EFEFFFFF", "#FFFFFFFF", 
+                                     "#FFEFEFFF", "#FFDEDEFF", "#FFCECEFF", "#FFBDBDFF",
+                                     "#FFADADFF", "#FF9C9CFF", "#FF8C8CFF", "#FF7B7BFF", "#FF6B6BFF",
+                                     "#FF5A5AFF", "#FF4A4AFF", "#FF3A3AFF", "#FF3A31FF",
+                                     "#FF452FFF", "#FF502CFF", "#FF5A29FF", "#FF6526FF", "#FF7024FF", 
+                                     "#FF7B21FF", "#FF861EFF", "#FF911BFF", "#FF9C19FF",
+                                     "#FFA716FF", "#FFB213FF", "#FFBD10FF", "#FFC80EFF", "#FFD30BFF",
+                                     "#FFDE08FF", "#FFE905FF", "#FFF403FF", "#FFFF00FF")
