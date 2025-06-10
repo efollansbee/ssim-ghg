@@ -644,22 +644,37 @@ parse.obspack_id <- function(x) {
 } 
 
 
-plot_Jacobian_cols_observations = function(transcom_region=2,month=12,
+plot_Jacobian_cols_observations = function(transcom_region=1:3,month=1:3,
+                                           plot_sum=FALSE,
                                            site_strings=c("brw_surface-insitu","mlo_surface-flask","smo_surface-insitu",
                                                           "co2_spo_surface-flask",
-                                                          "lef","wkt","wbi","nwr","hun","cgo","cpt"),plot_fossil_instead=FALSE,
+                                                          "lef","wkt","wbi","nwr","hun","cgo","cpt"),
+                                          plot_fossil_instead=FALSE,
                                           plot_fires_instead=FALSE)
 {
   month_string = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
-                   "2016-09","2016-10","2016-11","2016-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
-  
-  if(transcom_region <= 11){state_ind = paste("nee_regionRegion",pad(transcom_region,width=2,fill="0"),"_month",month_string[month],sep="")}
-   if(transcom_region > 11){state_ind = paste("ocean_regionRegion",pad(transcom_region,width=2,fill="0"),"_month",month_string[month],sep="")} 
-  print(state_ind)
+                   "2015-09","2015-10","2015-11","2015-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  cnt = 1
+  state_ind = vector()
+  for(i in 1:length(transcom_region)){
+    for(j in 1:length(month)){
+      if(transcom_region[i] <= 11){state_ind[cnt] = paste("nee_regionRegion",pad(transcom_region[i],width=2,fill="0"),"_month",month_string[month[j]],sep="")}
+      if(transcom_region[i] > 11){state_ind[cnt] = paste("ocean_regionRegion",pad(transcom_region[i],width=2,fill="0"),"_month",month_string[month[j]],sep="")} 
+      cnt = cnt + 1
+    }
+  }
+  #print(state_ind)
   if(!plot_fossil_instead & !plot_fires_instead){
+    if(plot_sum)
+    {
       df = data.frame(ID=obs_catalog$ID,
                   DATE=obs_catalog$DATE,
-                  VALUE = H[,state_ind])
+                  VALUE = apply(H[,state_ind],1,sum))
+    }else{
+      df = data.frame(ID=obs_catalog$ID,
+                      DATE=obs_catalog$DATE,
+                      VALUE = H[,state_ind])      
+    }
   }
   if(!plot_fossil_instead & plot_fires_instead){
       df = data.frame(ID=obs_catalog$ID,
@@ -683,25 +698,35 @@ plot_Jacobian_cols_observations = function(transcom_region=2,month=12,
                   #       rep("PRIOR",dim(obs_catalog)[1]),
                   #       rep("POSTERIOR",dim(obs_catalog)[1])))
   
+  
   #df$TYPE =factor(df$TYPE)
   #df$VALUE = as.numeric(df$VALUE)
+  require(reshape2)
   
   for(i in 1:length(site_strings))
   {
     ind = 1:length(df$ID) %in% grep(site_strings[i],df$ID)
   
     df2 = df[ind,]
+    df3 <- melt(df2[,-1] ,  id.vars = 'DATE', variable.name = 'series')
+    
     
     options(repr.plot.width=20, repr.plot.height=8)
     
-    g =  ggplot(df2, aes(x = DATE, y = VALUE)) + 
+
+    g =  ggplot(df3, aes(x = DATE, y = value)) + 
       #scale_color_manual(values = c("blue","red","black")) +
-      geom_point(size = 0.5) + 
+      #OLDgeom_point(size = 0.5) + 
+      geom_point(size = 0.5,aes(colour=series)) +
       #geom_smooth(method = "lm", formula = y ~ poly(x, 12), se = FALSE) +
       labs(title=paste(site_strings[i],"Time series"),x ="Date", y = "CO2") + 
       theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"),
-            title=element_text(size=16),legend.text=element_text(size=14))
-    
+            title=element_text(size=16),legend.text=element_text(size=14)) 
+       
+      if(dim(df2)[2]>5){ 
+        print("w/ more than 5 contributions, suppressing legend")
+        g = g + theme(legend.position = "none")
+       }
     plot(g)
   }
 }
