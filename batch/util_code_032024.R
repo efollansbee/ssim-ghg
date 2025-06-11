@@ -807,7 +807,7 @@ plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
      grd = expand.grid(longitude=seq(-180,177.5,by=5),latitude=c(-89,seq(-86,86,by=4),89))
      grd$z = as.vector(flx)
      require(lattice)
-     print(levelplot(z ~ longitude + latitude,data=grd,
+     plot(levelplot(z ~ longitude + latitude,data=grd,
                  xlab="",ylab="",
                  #col.regions=ferret.palette("broad"),
                  col.regions=ferret_light_centered_palette_63,
