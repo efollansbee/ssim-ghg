@@ -1,6 +1,6 @@
 generate_transcom_flux_ensemble_from_inversion=function(inv_object=ret2,
                                                         prior_mean_ncdf=file.path(data_dir,"priors/prior_SiB4.nc"),
-                                                        samples=500)
+                                                        samples=500,include_ocn_land_prior=FALSE)
 {
   #-- set.seed ?  
   
@@ -25,8 +25,13 @@ generate_transcom_flux_ensemble_from_inversion=function(inv_object=ret2,
   
   x_hat_matrix_v = as.vector(x_hat_matrix)
   transcom_NEE_5x4_v = as.vector(transcom_NEE_5x4)
-  
-  transcom_NEE_5x4_reals = rmvnorm(n=samples,mean=transcom_NEE_5x4_v*x_hat_matrix_v,sigma = (diag(transcom_NEE_5x4_v) %*% ret2$posterior$Sx_post %*% diag(transcom_NEE_5x4_v))) %>% aperm(c(2,1))
+
+  if(include_ocn_land_prior){
+      transcom_NEE_5x4_reals_mean = transcom_NEE_5x4_v*(x_hat_matrix_v+1)
+  }else{
+      transcom_NEE_5x4_reals_mean = transcom_NEE_5x4_v*x_hat_matrix_v
+  }
+  transcom_NEE_5x4_reals = rmvnorm(n=samples,mean=transcom_NEE_5x4_reals_mean,sigma = (diag(transcom_NEE_5x4_v) %*% ret2$posterior$Sx_post %*% diag(transcom_NEE_5x4_v))) %>% aperm(c(2,1))
   transcom_NEE_5x4_reals = aaply(transcom_NEE_5x4_reals,c(2),.fun=function(x){array(x,dim=c(24,22))}) %>% aperm(c(2,1,3))
   
   post_tr_monthly = transcom_NEE_5x4_reals     *12/44    *30.5*3600*24*1e3 * 1e-15
@@ -35,7 +40,12 @@ generate_transcom_flux_ensemble_from_inversion=function(inv_object=ret2,
   post_tr_annual = apply(post_tr_monthly,c(2,3),sum) * 0.5 # ~ PgC/yr
   post_df = cbind(FLUX=as.vector(t(post_tr_annual)),KIND=rep("Post",length(post_tr_annual)),REGION=rep(1:22,dim(post_tr_annual)[1]))
   
-  transcom_NEE_5x4_reals = rmvnorm(n=samples,mean=rep(0,length(x_hat_matrix_v)),sigma = (diag(transcom_NEE_5x4_v) %*% ret2$prior$Sx %*% diag(transcom_NEE_5x4_v))) %>% aperm(c(2,1))
+  if(include_ocn_land_prior){
+      transcom_NEE_5x4_reals_mean = transcom_NEE_5x4_v*(1)
+  }else{
+      transcom_NEE_5x4_reals_mean = rep(0,length(x_hat_matrix_v))
+  }
+  transcom_NEE_5x4_reals = rmvnorm(n=samples,mean=transcom_NEE_5x4_reals_mean,sigma = (diag(transcom_NEE_5x4_v) %*% ret2$prior$Sx %*% diag(transcom_NEE_5x4_v))) %>% aperm(c(2,1))
   transcom_NEE_5x4_reals = aaply(transcom_NEE_5x4_reals,c(2),.fun=function(x){array(x,dim=c(24,22))}) %>% aperm(c(2,1,3))
   
   prior_tr_monthly = transcom_NEE_5x4_reals       *  12/44 *30.5*3600*24*1e3* 1e-15
@@ -51,7 +61,11 @@ generate_transcom_flux_ensemble_from_inversion=function(inv_object=ret2,
   full_df$REGION = factor(full_df$REGION,levels=1:22)
   
   #-- This calculate the "true" fluxes from original prior fluxes
-  transcom_fluxes_real = pull_true_transcom_flux(prior_flux_file=file.path(data_dir,"priors/prior_SiB4.nc"),state_true=state_vector_true)
+  if(include_ocn_land_prior){
+      transcom_fluxes_real = pull_true_transcom_flux(prior_flux_file=file.path(data_dir,"priors/prior_SiB4.nc"),state_true=(1+state_vector_true))
+  }else{
+      transcom_fluxes_real = pull_true_transcom_flux(prior_flux_file=file.path(data_dir,"priors/prior_SiB4.nc"),state_true=state_vector_true)
+  }      
   transcom_fluxes_real_annual_avg = transcom_fluxes_real$annual_2yr
   transcom_fluxes_real_monthly_avg = transcom_fluxes_real$monthly
   transcom_fluxes_real_monthly_avg_global = apply(transcom_fluxes_real$monthly,c(1),sum)
@@ -64,4 +78,3 @@ generate_transcom_flux_ensemble_from_inversion=function(inv_object=ret2,
   
   return(output)
 }
-  

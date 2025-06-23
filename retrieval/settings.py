@@ -26,6 +26,7 @@ band_molecules.append(["ch4","h2o"])
 sza_0 = 30.0 #solar zenith angle, degrees
 sza   = 0.0 #sensor zenith angle, degrees
 albedo_true = np.array([0.20, 0.25, 0.26]) #per-band albedo
+albedo_slope_true = np.array([0.0, 0.0, 0.0]) #per-band linear albedo slopes
 
 #Signal-to-noise ratio
 SNR = 400.0
@@ -57,6 +58,7 @@ T_prior = T_true + 2.0 #Add 2 K to each level of the true temperature profile
 p_prior = p_true * 1.02 #Increase the true pressure profile by 2%
 q_prior = q_true * 1.05 #Increase the true specific humidity profile by 5%
 albedo_prior = [albedo_true[0] + 0.02,albedo_true[1] + 0.02,albedo_true[2] + 0.02] #Add 0.02 to the true albedo
+albedo_slope_prior = [0.0,0.0,0.0]
 tau_aerosol_prior = 0.05 #Start with a near-zero AOD.
 
 
@@ -69,11 +71,12 @@ T_prior_uncert = 5 #K
 p_prior_uncert = 0.1 #10%
 q_prior_uncert = 0.1 #10%
 albedo_uncert = [0.2,0.2,0.2]
+albedo_slope_uncert = [1e-10,1e-10,1e-10] #Fix it at the truth by default
 tau_aerosol_prior_uncert = 0.5
 
 #Create a prior covariance matrix (no aerosols by default)
-S_prior = np.zeros((8,8))
-np.fill_diagonal(S_prior,[co2_prior_uncert**2,ch4_prior_uncert**2,T_prior_uncert**2,p_prior_uncert**2,q_prior_uncert**2,albedo_uncert[0]**2,albedo_uncert[1]**2,albedo_uncert[2]**2])
+S_prior = np.zeros((11,11))
+np.fill_diagonal(S_prior,[co2_prior_uncert**2,ch4_prior_uncert**2,T_prior_uncert**2,p_prior_uncert**2,q_prior_uncert**2,albedo_uncert[0]**2,albedo_uncert[1]**2,albedo_uncert[2]**2,albedo_slope_uncert[0]**2,albedo_slope_uncert[1]**2,albedo_slope_uncert[2]**2])
 
 #How good should our modeled fit of the radiances be before we stop the retrieval?
 chisq_threshold = 1.01

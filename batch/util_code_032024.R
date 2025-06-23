@@ -1,3 +1,42 @@
+#-- SETUP
+setup = function()
+{
+       
+###############################################
+#-- Required Libraries
+###############################################
+
+require(ncdf4,warn.conflicts = FALSE)
+require(plyr,warn.conflicts = FALSE)
+require(dplyr,warn.conflicts = FALSE)
+require(parallel,warn.conflicts = FALSE)
+require(ggplot2,warn.conflicts = FALSE)
+require(abind,warn.conflicts = FALSE)
+require(Matrix,warn.conflicts = FALSE)
+require(lattice,warn.conflicts = FALSE)
+require(memuse,warn.conflicts = FALSE)
+require(EnvStats,warn.conflicts = FALSE)
+require(gridExtra,warn.conflicts = FALSE)
+require(mvtnorm,warn.conflicts = FALSE)
+require(plotly,warn.conflicts = FALSE)
+
+    
+###############################################
+#-- Load Code
+##############################################
+source(file.path(Rcode_dir,"plot_concentrations.R"))
+source(file.path(Rcode_dir,"inversion_032024.R"))
+source(file.path(Rcode_dir,"write_inversion_2_netcdf_032024.R"))
+source(file.path(Rcode_dir,"generate_transcom_flux_ensemble_from_inversion.R"))
+
+########################
+#--  Detect Cores
+########################
+print(paste("Num CPUs:",detectCores(),"cores"))
+memuse::Sys.meminfo()
+}
+    
+
 #-- Create the true flux field from prior and true state vector
 
 pull_true_transcom_flux = function(prior_flux_file,state_true)
@@ -309,7 +348,7 @@ plot_transcom_flux_by_month = function(ret){
     
     
     
-    print(g)
+    plot(g)
     
   }
   
@@ -345,11 +384,11 @@ plot_transcom_flux_by_month = function(ret){
   
   
   
-  print(g)
+  plot(g)
 }
 
 #-- Use this to control plot size
-plot_timeseries_flux_bytranscom = function(ret)
+plot_timeseries_flux_bytranscom = function(ret,include_prior_ocn_land=FALSE,include_fossil_biofires=FALSE)
 {
 
   mat_table = data.frame(NUMBER=1:22,NAME=transcom_names)
@@ -395,7 +434,7 @@ plot_timeseries_flux_bytranscom = function(ret)
     ylab("PgC/year") +
     theme(axis.text.x = element_text(angle=70,size=15))
   
-  print(h)
+  plot(h)
   ###############################################
   
   
@@ -417,7 +456,7 @@ plot_timeseries_flux_bytranscom = function(ret)
     ylab("PgC/month") +
     theme(axis.text.x = element_text(angle=70,size=15))
   
-  print(h2)
+  plot(h2)
   ###############################################    
   
   
@@ -514,26 +553,28 @@ plot_inversion_correlations = function(org_data)
   diag(prior_cor_flux) = NA
   diag(post_time_cor_flux) = NA
   diag(prior_time_cor_flux) = NA
-  
+
   rng1 = max(abs(c(as.vector(prior_cor_flux),c(as.vector(post_cor_flux)))),na.rm=TRUE)
   rng2 = max(abs(c(as.vector(prior_time_cor_flux),c(as.vector(post_time_cor_flux)))),na.rm=TRUE)
   
   options(repr.plot.width = 20, repr.plot.height = 20)
   
-  p1 = levelplot(prior_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main="Prior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
+  p1 = levelplot(prior_cor_flux,col.regions=my.col(40),
+                 at=seq(-rng1,rng1,length=40),main="Prior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  p2 = levelplot(post_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main="Posterior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
+  p2 = levelplot(post_cor_flux,col.regions=my.col(40),at=seq(-rng1,rng1,length=40),main="Posterior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  p3 = levelplot(prior_time_cor_flux,col.regions=my.col(20),at=seq(-rng2,rng2,length=20),main="Prior Correlation in time in global flux",scales=list(x=list(rot=60)),
+  p3 = levelplot(prior_time_cor_flux,col.regions=my.col(40),at=seq(-rng2,rng2,length=40),main="Prior Correlation in time in global flux",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  p4 = levelplot(post_time_cor_flux,col.regions=my.col(20),at=seq(-rng2,rng2,length=20),main="Posterior Correlation in time in global flux ",scales=list(x=list(rot=60)),
+  p4 = levelplot(post_time_cor_flux,col.regions=my.col(40),at=seq(-rng2,rng2,length=40),main="Posterior Correlation in time in global flux ",scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
   marrangeGrob(list(p1,p2,p3,p4),nrow=2,ncol=2)
 }
+
 
 plot_inversion_correlations_by_transcom = function(org_data)
 {
@@ -542,7 +583,7 @@ plot_inversion_correlations_by_transcom = function(org_data)
           "Jan 2016","Feb 2016","Mar 2016","Apr 2016",
           "May 2016","Jun 2016","Jul 2016","Aug 2016")
   
-  for(i in 1:22)
+  plt = function(i)
   {
   transcom_subset_post = t(org_data$post_tr_monthly[,,i])
   transcom_subset_prior = t(org_data$prior_tr_monthly[,,i])
@@ -565,8 +606,10 @@ plot_inversion_correlations_by_transcom = function(org_data)
   p2 = levelplot(post_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main=paste("Posterior Correlation in Month to Month flux for",transcom_names[i]),scales=list(x=list(rot=60)),
                  xlab="",ylab="")
   
-  print(marrangeGrob(list(p1,p2),nrow=1,ncol=2))
+  marrangeGrob(list(p1,p2),nrow=1,ncol=2)
   }
+  
+  lapply(1:22,FUN=plt)
 
 }
 
@@ -600,3 +643,317 @@ parse.obspack_id <- function(x) {
   return(info)
 } 
 
+
+plot_Jacobian_cols_observations = function(transcom_region=1:3,month=1:3,
+                                           plot_sum=FALSE,
+                                           site_strings=c("brw_surface-insitu","mlo_surface-flask","smo_surface-insitu",
+                                                          "co2_spo_surface-flask",
+                                                          "lef","wkt","wbi","nwr","hun","cgo","cpt"),
+                                          plot_fossil_instead=FALSE,
+                                          plot_fires_instead=FALSE)
+{
+  month_string = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
+                   "2015-09","2015-10","2015-11","2015-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  cnt = 1
+  state_ind = vector()
+  for(i in 1:length(transcom_region)){
+    for(j in 1:length(month)){
+      if(transcom_region[i] <= 11){state_ind[cnt] = paste("nee_regionRegion",pad(transcom_region[i],width=2,fill="0"),"_month",month_string[month[j]],sep="")}
+      if(transcom_region[i] > 11){state_ind[cnt] = paste("ocean_regionRegion",pad(transcom_region[i],width=2,fill="0"),"_month",month_string[month[j]],sep="")} 
+      cnt = cnt + 1
+    }
+  }
+  #print(state_ind)
+  if(!plot_fossil_instead & !plot_fires_instead){
+    if(plot_sum)
+    {
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = apply(H[,state_ind],1,sum))
+    }else{
+      df = data.frame(ID=obs_catalog$ID,
+                      DATE=obs_catalog$DATE,
+                      VALUE = H[,state_ind])      
+    }
+  }
+  if(!plot_fossil_instead & plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H_bgd[,2])
+  }
+  if(plot_fossil_instead & !plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H_bgd[,3])
+  }
+  if(plot_fossil_instead & plot_fires_instead){
+      df = data.frame(ID=obs_catalog$ID,
+                  DATE=obs_catalog$DATE,
+                  VALUE = H_bgd[,2] + H_bgd[,3])
+  }
+                  #VALUE=c(ret2$posterior$inputs$obs + pr,
+                  #        ret2$prior$outputs$modeled_obs + pr,
+                  #        ret2$posterior$outputs$modeled_obs + pr),
+                  #TYPE=c(rep("OBS",dim(obs_catalog)[1]),
+                  #       rep("PRIOR",dim(obs_catalog)[1]),
+                  #       rep("POSTERIOR",dim(obs_catalog)[1])))
+  
+  
+  #df$TYPE =factor(df$TYPE)
+  #df$VALUE = as.numeric(df$VALUE)
+  require(reshape2)
+  
+  for(i in 1:length(site_strings))
+  {
+    ind = 1:length(df$ID) %in% grep(site_strings[i],df$ID)
+  
+    df2 = df[ind,]
+    df3 <- melt(df2[,-1] ,  id.vars = 'DATE', variable.name = 'series')
+    
+    
+    options(repr.plot.width=20, repr.plot.height=8)
+    
+
+    g =  ggplot(df3, aes(x = DATE, y = value)) + 
+      #scale_color_manual(values = c("blue","red","black")) +
+      #OLDgeom_point(size = 0.5) + 
+      geom_point(size = 0.5,aes(colour=series)) +
+      #geom_smooth(method = "lm", formula = y ~ poly(x, 12), se = FALSE) +
+      labs(title=paste(site_strings[i],"Time series"),x ="Date", y = "CO2") + 
+      theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"),
+            title=element_text(size=16),legend.text=element_text(size=14)) 
+       
+      if(dim(df2)[2]>5){ 
+        print("w/ more than 5 contributions, suppressing legend")
+        g = g + theme(legend.position = "none")
+       }
+    plot(g)
+  }
+}
+
+plot_Jacobian_rows_fluxes = function(row_number){
+
+  load(file.path(data_dir,"obs/obs_catalog_042424_unit_pulse_hour_timestamp_witherrors_withdates.rda")) 
+
+   print(obs_catalog[row_number,c("TYPE","ID","LON","LAT","DATE")])
+    
+   month_string = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
+                 "2015-09","2015-10","2015-11","2015-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  
+  for(i in 1:22)
+  {
+    transcom_regs_dims = sapply(dimnames(H)[[2]],FUN=function(x){gsub("regionRegion","",strsplit(x,"_")[[1]][2])})
+    transcom_ind = transcom_regs_dims == pad(i,width=2,fill="0")
+    
+    df2 = H[row_number,transcom_ind]
+    ord = order(names(df2))
+    df2 = df2[ord]
+    
+    options(repr.plot.width=20, repr.plot.height=8)
+
+#-- Transcom region labels for regions 1:22
+transcom_names = c("North American Boreal    ", "North American Temperate ",
+                   "South American Tropical  ", "South American Temperate ",
+                   "Northern Africa          ", "Southern Africa          ",
+                   "Eurasia Boreal           ", "Eurasia Temperate        ",
+                   "Tropical Asia            ", "Australia                ",
+                   "Europe                   ", "North Pacific Temperate  ",
+                   "West Pacific Tropical    ", "East Pacific Tropical    ",
+                   "South Pacific Temperate  ", "Northern Ocean           ",
+                   "North Atlantic Temperate ", "Atlantic Tropical        ",
+                   "South Atlantic Temperate ", "Southern Ocean           ",
+                   "Indian Tropical          ", "South Indian Temperate   ")
+      
+    plot(1:24,as.numeric(df2),xaxt="n",ylab="sensitivity (ppm CO2) per flux region/month",
+        xlab="Time",main=paste("Sensitivity of observation to a monthly flux from",gsub(" ","",transcom_names[i]),"at the given month"))
+    grid()
+    axis(side=1,at=1:24,labels=month_string)
+  }
+}
+
+
+plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
+  
+  old_opt = options()
+  options(repr.plot.width=12, repr.plot.height=8)
+  #-- Transcom region labels for regions 1:22
+  transcom_names = c("North American Boreal    ", "North American Temperate ",
+                     "South American Tropical  ", "South American Temperate ",
+                     "Northern Africa          ", "Southern Africa          ",
+                     "Eurasia Boreal           ", "Eurasia Temperate        ",
+                     "Tropical Asia            ", "Australia                ",
+                     "Europe                   ", "North Pacific Temperate  ",
+                     "West Pacific Tropical    ", "East Pacific Tropical    ",
+                     "South Pacific Temperate  ", "Northern Ocean           ",
+                     "North Atlantic Temperate ", "Atlantic Tropical        ",
+                     "South Atlantic Temperate ", "Southern Ocean           ",
+                     "Indian Tropical          ", "South Indian Temperate   ")
+  
+  
+  dts = c("2014-09","2014-10","2014-11","2014-12","2015-01","2015-02","2015-03","2015-04","2015-05","2015-06","2015-07","2015-08",
+                            "2015-09","2015-10","2015-11","2015-12","2016-01","2016-02","2016-03","2016-04","2016-05","2016-06","2016-07","2016-08")
+  require(ncdf4)
+  
+  for(i in 1:length(month)){
+    for(j in 1:length(transcom_region)){
+     f = nc_open(file.path(data_dir,"priors/sib4_NEE_pulses.nc4"))
+     flx = ncvar_get(f,"NEE",start=c(1,1,transcom_region[j],month[i]),count=c(-1,-1,1,1))
+     #-- I'm not positive but I've had to scale CO2 output by 12/44 and it might be needed here too
+     #-- haven't identified where the issue is...
+     flx = flx * 12/44
+     nc_close(f)
+     library(maps)
+     w = map("world",plot = FALSE)
+     grd = expand.grid(longitude=seq(-180,177.5,by=5),latitude=c(-89,seq(-86,86,by=4),89))
+     grd$z = as.vector(flx)
+     require(lattice)
+     plot(levelplot(z ~ longitude + latitude,data=grd,
+                 xlab="",ylab="",
+                 #col.regions=ferret.palette("broad"),
+                 col.regions=ferret_light_centered_palette_63,
+                 at=seq(-max(abs(grd$z)),max(abs(grd$z)),length=63),
+                 aspect="fill",useRaster=TRUE,
+                 scales=list(x=list(draw=FALSE),y=list(draw=FALSE)),
+                 main=paste("Avg NEE Flux (CO2), umolC/m2/sec for ",transcom_names[transcom_region[j]]," ",dts[month[i]],sep=""),
+                 panel = function(x,y,z,...)
+                 {
+                   #llines(mm$x,mm$y,col="black",lty=1,lwd=3)
+                   #llines(w$x,w$y,col="bl",lty=1,lwd=2)
+                   panel.levelplot(x,y,z,...)
+                   llines(w$x,w$y,col="black",lty=1,lwd=2)
+                 }))
+    }
+  }
+}
+
+
+plot_flux_maps_annual_prior_post = function(prior_file_nc="/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_prior.nc4",
+                                            posterior_file_nc="/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_posterior.nc4"){
+
+fil_prior = nc_open("/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_prior.nc4")
+prior_flux_samples = ncvar_get(fil_prior,"flux_samples")
+prior_flux_mean_sampled = apply(prior_flux_samples,c(1,2,3),mean)
+prior_flux_mean_analytical = ncvar_get(fil_prior,"flux_mean")
+prior_flux_sd_sampled = apply(prior_flux_samples,c(1,2,3),sd)
+prior_flux_annual_flux_mean_analytical = apply(prior_flux_mean_analytical,c(1,2),sum)*1/2
+prior_flux_annual_flux_mean_sampled = apply(prior_flux_samples,c(1,2),sum)*1/2
+prior_flux_annual_flux_sd_sampled = apply(apply(prior_flux_samples,c(1,2,4),sum)*1/2,c(1,2),sd)
+
+rng_mn_prior = range(prior_flux_annual_flux_mean_analytical)
+rng_sd_prior = range(prior_flux_annual_flux_sd_sampled)
+
+fil_posterior = nc_open("/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_posterior.nc4")
+posterior_flux_samples = ncvar_get(fil_posterior,"flux_samples")
+posterior_flux_mean_sampled = apply(posterior_flux_samples,c(1,2,3),mean)
+posterior_flux_mean_analytical = ncvar_get(fil_posterior,"flux_mean")
+posterior_flux_sd_sampled = apply(posterior_flux_samples,c(1,2,3),sd)
+posterior_flux_annual_flux_mean_analytical = apply(posterior_flux_mean_analytical,c(1,2),sum)*1/2
+posterior_flux_annual_flux_mean_sampled = apply(posterior_flux_samples,c(1,2),sum)*1/2
+posterior_flux_annual_flux_sd_sampled = apply(apply(posterior_flux_samples,c(1,2,4),sum)*1/2,c(1,2),sd)
+
+prior_flux_annual_flux_reduction_error_sampled = 1 - (posterior_flux_annual_flux_sd_sampled/prior_flux_annual_flux_sd_sampled)
+prior_flux_annual_flux_reduction_error_sampled[is.na(prior_flux_annual_flux_reduction_error_sampled)] = 0
+
+rng_mn_posterior = range(posterior_flux_annual_flux_mean_analytical)
+rng_sd_posterior = range(posterior_flux_annual_flux_sd_sampled)
+rng_sd_reduction = range(prior_flux_annual_flux_reduction_error_sampled)
+
+library(maps)
+w = map("world",plot=FALSE)
+
+grd = expand.grid(longitude=fil_prior$dim$longitude$vals,latitude=fil_prior$dim$latitude$vals)
+
+#-- units need to go from kgCO2/m2/sec to gC/m2/yr, 
+units_scaling = 1e3*12/44*3600*24*30.5
+grd$prior.mean = as.vector(prior_flux_annual_flux_mean_analytical)*units_scaling
+grd$posterior.mean = as.vector(posterior_flux_annual_flux_mean_analytical)*units_scaling
+grd$prior.sd = as.vector(prior_flux_annual_flux_sd_sampled)*units_scaling
+grd$posterior.sd = as.vector(posterior_flux_annual_flux_sd_sampled)*units_scaling
+grd$reduction.sd = as.vector(prior_flux_annual_flux_reduction_error_sampled)
+
+rng_mn_prior = rng_mn_prior * units_scaling
+rng_sd_prior = rng_sd_prior * units_scaling
+rng_mn_posterior = rng_mn_posterior * units_scaling
+rng_sd_posterior = rng_sd_posterior * units_scaling
+rng_sd_reduction = rng_sd_reduction 
+
+plt1 = levelplot(prior.mean ~ longitude + latitude,data=grd,col.regions=my.col(50),
+                 at=seq(-max(abs(c(rng_mn_prior,rng_mn_posterior))),max(abs(c(rng_mn_prior,rng_mn_posterior))),length=50),
+                 main=c("Annual Prior Mean Flux (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                         panel.levelplot(..., at = at, contour = contour,labels = labels)
+                         llines(w$x,w$y,col="black")}
+)
+
+plt2 = levelplot(posterior.mean ~ longitude + latitude,data=grd,col.regions=my.col(50),cuts=50,
+                 at=seq(-max(abs(c(rng_mn_prior,rng_mn_posterior))),max(abs(c(rng_mn_prior,rng_mn_posterior))),length=50),
+                 main=c("Annual Posterior Mean Flux (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+plt3 = levelplot(prior.sd ~ longitude + latitude,data=grd,col.regions=my.col(100)[51:100],cuts=50,
+                 at=seq(0,max(abs(c(rng_sd_prior,rng_sd_posterior))),length=50),
+                 main=c("Annual Prior Flux Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+plt4 = levelplot(posterior.sd ~ longitude + latitude,data=grd,col.regions=my.col(100)[51:100],cuts=50,
+                 at=seq(0,max(abs(c(rng_sd_prior,rng_sd_posterior))),length=50),
+                 main=c("Annual Posterior Flux Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+plt5 = levelplot(reduction.sd ~ longitude + latitude,data=grd,col.regions=my.col(50),cuts=50,
+                 at=seq(-max(abs(c(rng_sd_reduction))),max(abs(c(rng_sd_reduction))),length=50),
+                 main=c("Annual Flux Reduction in Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 panel = function(..., at, region,contour = FALSE, labels = NULL) {
+                   panel.levelplot(..., at = at, contour = contour,labels = labels)
+                   llines(w$x,w$y,col="black")})
+
+options(jupyter.plot_scale=1)
+
+print(plt1)
+print(plt2)
+print(plt3)
+print(plt4)
+print(plt5)
+
+}
+
+pad = function (x, width, fill = " ", left = TRUE) 
+{
+  xneg = FALSE
+  nc = nchar(x)
+  if (width > nc) {
+    if (left) {
+      str = paste(paste(rep(fill, width - nc), collapse = ""), 
+                  x, sep = "")
+    }
+    else {
+      str = paste(x, paste(rep(fill, width - nc), collapse = ""), 
+                  sep = "")
+    }
+  }
+  else {
+    str = x
+  }
+  return(str)
+}
+
+ferret_light_centered_palette_63 = c("#00FFFFFF", "#03F4FFFF", "#05E9FFFF", "#08DEFFFF", "#0BD3FFFF",
+                                     "#0EC8FFFF", "#10BDFFFF", "#13B2FFFF", "#16A7FFFF",
+                                     "#199CFFFF", "#1B91FFFF", "#1E86FFFF", "#217BFFFF", 
+                                     "#2470FFFF", "#2665FFFF", "#295AFFFF", "#2C50FFFF", "#2F45FFFF",
+                                     "#313AFFFF", "#3A3AFFFF", "#4A4AFFFF", "#5A5AFFFF", "#6B6BFFFF",
+                                     "#7B7BFFFF", "#8C8CFFFF", "#9C9CFFFF", "#ADADFFFF",
+                                     "#BDBDFFFF", "#CECEFFFF", "#DEDEFFFF", "#EFEFFFFF", "#FFFFFFFF", 
+                                     "#FFEFEFFF", "#FFDEDEFF", "#FFCECEFF", "#FFBDBDFF",
+                                     "#FFADADFF", "#FF9C9CFF", "#FF8C8CFF", "#FF7B7BFF", "#FF6B6BFF",
+                                     "#FF5A5AFF", "#FF4A4AFF", "#FF3A3AFF", "#FF3A31FF",
+                                     "#FF452FFF", "#FF502CFF", "#FF5A29FF", "#FF6526FF", "#FF7024FF", 
+                                     "#FF7B21FF", "#FF861EFF", "#FF911BFF", "#FF9C19FF",
+                                     "#FFA716FF", "#FFB213FF", "#FFBD10FF", "#FFC80EFF", "#FFD30BFF",
+                                     "#FFDE08FF", "#FFE905FF", "#FFF403FF", "#FFFF00FF")
