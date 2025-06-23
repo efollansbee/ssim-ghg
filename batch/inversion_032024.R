@@ -371,6 +371,6 @@ invert_clean_notation = function(H,Sz_diagonal,Sx,z,H_bgd,subset_indicator_obs=N
   print("Done....writing inversion object output")  
   return(list(posterior=list(x_hat=x_hat,Sx_post=as.matrix(Sx_post),inputs=inputs_list,outputs=list(modeled_obs=modeled_obs)),
               prior=list(x_hat=prior_mean_out,Sx=as.matrix(Sx),inputs=inputs_list,outputs=list(modeled_obs=apriori_obs_out)),
-              diags=list(KGAIN=K,DFS=sum_trS,DFB=sum_trB)))
+              diags=list(KGAIN=K,DFS=sum_trS,DFB=sum_trB),state_dim_names=dimnames(H)[[2]]))
              
 }

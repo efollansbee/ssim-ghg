@@ -53,7 +53,7 @@ for(i in 1:length(site_strings))
     theme(axis.text=element_text(size=12),axis.title=element_text(size=14,face="bold"),
           title=element_text(size=16),legend.text=element_text(size=14))
   
-  if(ggplotly){ggplotly(g)}else{print(g)}
+  if(ggplotly){ggplotly(g)}else{plot(g)}
  }
 }
   
