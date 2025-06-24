@@ -830,7 +830,7 @@ plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
 plot_flux_maps_annual_prior_post = function(prior_file_nc="/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_prior.nc4",
                                             posterior_file_nc="/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_posterior.nc4"){
 
-fil_prior = nc_open("/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_prior.nc4")
+fil_prior = nc_open(prior_file_nc)
 prior_flux_samples = ncvar_get(fil_prior,"flux_samples")
 prior_flux_mean_sampled = apply(prior_flux_samples,c(1,2,3),mean)
 prior_flux_mean_analytical = ncvar_get(fil_prior,"flux_mean")
@@ -842,7 +842,7 @@ prior_flux_annual_flux_sd_sampled = apply(apply(prior_flux_samples,c(1,2,4),sum)
 rng_mn_prior = range(prior_flux_annual_flux_mean_analytical)
 rng_sd_prior = range(prior_flux_annual_flux_sd_sampled)
 
-fil_posterior = nc_open("/Users/aschuh/temp/ssim-ghg-output/gridded_fluxes_posterior.nc4")
+fil_posterior = nc_open(posterior_file_nc)
 posterior_flux_samples = ncvar_get(fil_posterior,"flux_samples")
 posterior_flux_mean_sampled = apply(posterior_flux_samples,c(1,2,3),mean)
 posterior_flux_mean_analytical = ncvar_get(fil_posterior,"flux_mean")
@@ -908,7 +908,7 @@ plt4 = levelplot(posterior.sd ~ longitude + latitude,data=grd,col.regions=my.col
 
 plt5 = levelplot(reduction.sd ~ longitude + latitude,data=grd,col.regions=my.col(50),cuts=50,
                  at=seq(-max(abs(c(rng_sd_reduction))),max(abs(c(rng_sd_reduction))),length=50),
-                 main=c("Annual Flux Reduction in Standard Deviation (gC/m2/yr)"),xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 main=c("Annual Flux Reduction in Standard Deviation ( 1 - (Prior_SD - Post_SD)/Prior_SD) )"), xlab="",ylab="",aspect="iso",useRaster=TRUE,
                  panel = function(..., at, region,contour = FALSE, labels = NULL) {
                    panel.levelplot(..., at = at, contour = contour,labels = labels)
                    llines(w$x,w$y,col="black")})
