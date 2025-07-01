@@ -1,4 +1,4 @@
-# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 05 Feb 2025 (Wed) 19:49:44 MST>
+# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 27 Jun 2025 (Fri) 15:04:05 MDT>
 
 # Return data frame of the relevant pieces of a set of furnished
 # obspack_id values (x)
@@ -303,7 +303,7 @@ enkf_meas_update_loc <- function(x,dx,obs,y,dy,Szd,localization_mask=NULL) {
 
   retval <- list()
   retval$dx <- dx
-  retval$x <- x
+    retval$x <- x
   return(retval)
 }
 
@@ -312,13 +312,14 @@ enkf_meas_update_loc <- function(x,dx,obs,y,dy,Szd,localization_mask=NULL) {
 # Update the solution {x,Sx} with additional 
 # observations {z,Sz} obeying the form z = Hx
 
-kf_meas_update <- function(x,Sx,H,z,Sz) {
+kf_meas_update <- function(x,Sx,H,z,Sz,verbose=FALSE) {
 
-  HPHR <- H %*% Sx %*% t(H)+Sz
+#    if(verbose) { t0_
+    HPHR <- H %*% Sx %*% t(H)+Sz
   K <- (Sx %*% t(H)) %*% solve(HPHR)
   retval <- list()
   retval$x = x + K %*% (z - H %*% x)
-  imkh=diag(rep(1,length(x)))-K %*% H
+  imkh=diag(rep(1,length(x)))-K %*% H # I - KH
   
   #retval$Sx = imkh %*% Sx %*% t(imkh) + K %*% Sz %*% t(K)
   retval$Sx = imkh %*% Sx 
