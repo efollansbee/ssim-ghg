@@ -923,6 +923,212 @@ print(plt5)
 
 }
 
+plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state = state_vector_true, 
+                                                 prior_mean_ncdf = file.path(data_dir, "priors/prior_SiB4.nc"), 
+                                                 center_prior_on_zero = TRUE) 
+{
+  print("creating gridded fluxes....")
+  con = nc_open(prior_mean_ncdf)
+  longitude_prior = con$dim$longitude$vals
+  latitude_prior = con$dim$latitude$vals
+  NEE = ncvar_get(con, "NEE")
+  nc_close(con)
+  NEE_1x1 = aaply(NEE, 3, .fun = function(x) {
+    expand_5x4_2_1x1(x)
+  }) %>% aperm(c(2, 3, 1))
+  tr_dir = file.path(data_dir, "/transcom/", sep = "")
+  x_prior_matrix = matrix(inv_object$prior$x_hat, nrow = 24, 
+                          byrow = FALSE)
+  x_hat_matrix = matrix(inv_object$posterior$x_hat, nrow = 24, 
+                        byrow = FALSE)
+  true_state_matrix = matrix(true_state, nrow = 24, byrow = FALSE)
+  if (!center_prior_on_zero) {
+    x_prior_matrix = x_prior_matrix + 1
+    x_hat_matrix = x_hat_matrix + 1
+    true_state_matrix = true_state_matrix + 1
+  }
+  gridded_1x1_prior_state = aaply(x_prior_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_posterior_state = aaply(x_hat_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_true_state = aaply(true_state_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_prior_mean_flux = NEE_1x1 * gridded_1x1_prior_state
+  gridded_1x1_posterior_mean_flux = NEE_1x1 * gridded_1x1_posterior_state
+  gridded_1x1_truth = NEE_1x1 * gridded_1x1_true_state
+  gridded_1x1_prior_mean_flux_annual = apply(gridded_1x1_prior_mean_flux, 
+                                             c(1, 2), sum)/2
+  gridded_1x1_posterior_mean_flux_annual = apply(gridded_1x1_posterior_mean_flux, 
+                                                 c(1, 2), sum)/2
+  gridded_1x1_true_mean_flux_annual = apply(gridded_1x1_truth, 
+                                            c(1, 2), sum)/2
+  library(maps)
+  w = map("world", plot = FALSE)
+  grd = expand.grid(longitude = seq(-179.5, 179.5, by = 1), 
+                    latitude = seq(-89.5, 89.5, by = 1))
+  units_scaling = 1000 * 12/44 * 3600 * 24 * 30.5
+  grd$prior.mean = as.vector(gridded_1x1_prior_mean_flux_annual) * 
+    units_scaling
+  grd$posterior.mean = as.vector(gridded_1x1_posterior_mean_flux_annual) * 
+    units_scaling
+  grd$truth = as.vector(gridded_1x1_true_mean_flux_annual) * 
+    units_scaling
+  grd$difference = grd$posterior.mean - grd$truth
+  rng_mn = range(c(grd$prior.mean, grd$posterior.mean, grd$truth, 
+                   grd$difference))
+  plt1 = levelplot(prior.mean ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), at = seq(-max(abs(c(rng_mn))), 
+                                                      max(abs(c(rng_mn))), length = 50), main = c("Annual Prior Mean Flux (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  plt2 = levelplot(posterior.mean ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
+                                                                 max(abs(c(rng_mn))), length = 50), main = c("Annual Posterior Mean Flux (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  plt3 = levelplot(truth ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
+                                                                 max(abs(c(rng_mn))), length = 50), main = c("True Flux (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  plt4 = levelplot(difference ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
+                                                                 max(abs(c(rng_mn))), length = 50), main = c("Annual Posterior Mean Flux - TRUTH (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  options(jupyter.plot_scale = 1)
+  print(plt1)
+  print(plt2)
+  print(plt3)
+  print(plt4)
+}
+
+
+plot_flux_maps_annual_prior_post_truth=function(inv_object = ret2, true_state = state_vector_true, 
+                                                 prior_mean_ncdf = file.path(data_dir, "priors/prior_SiB4.nc"), 
+                                                 center_prior_on_zero = TRUE) 
+{
+  print("creating gridded fluxes....")
+  con = nc_open(prior_mean_ncdf)
+  longitude_prior = con$dim$longitude$vals
+  latitude_prior = con$dim$latitude$vals
+  NEE = ncvar_get(con, "NEE")
+  nc_close(con)
+  NEE_1x1 = aaply(NEE, 3, .fun = function(x) {
+    expand_5x4_2_1x1(x)
+  }) %>% aperm(c(2, 3, 1))
+  tr_dir = file.path(data_dir, "/transcom/", sep = "")
+  x_prior_matrix = matrix(inv_object$prior$x_hat, nrow = 24, 
+                          byrow = FALSE)
+  x_hat_matrix = matrix(inv_object$posterior$x_hat, nrow = 24, 
+                        byrow = FALSE)
+  true_state_matrix = matrix(true_state, nrow = 24, byrow = FALSE)
+  if (!center_prior_on_zero) {
+    x_prior_matrix = x_prior_matrix + 1
+    x_hat_matrix = x_hat_matrix + 1
+    true_state_matrix = true_state_matrix + 1
+  }
+  gridded_1x1_prior_state = aaply(x_prior_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_posterior_state = aaply(x_hat_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_true_state = aaply(true_state_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_prior_mean_flux = NEE_1x1 * gridded_1x1_prior_state
+  gridded_1x1_posterior_mean_flux = NEE_1x1 * gridded_1x1_posterior_state
+  gridded_1x1_truth = NEE_1x1 * gridded_1x1_true_state
+  gridded_1x1_prior_mean_flux_annual = apply(gridded_1x1_prior_mean_flux, 
+                                             c(1, 2), sum)/2
+  gridded_1x1_posterior_mean_flux_annual = apply(gridded_1x1_posterior_mean_flux, 
+                                                 c(1, 2), sum)/2
+  gridded_1x1_true_mean_flux_annual = apply(gridded_1x1_truth, 
+                                            c(1, 2), sum)/2
+  library(maps)
+  w = map("world", plot = FALSE)
+  grd = expand.grid(longitude = seq(-179.5, 179.5, by = 1), 
+                    latitude = seq(-89.5, 89.5, by = 1))
+  units_scaling = 1000 * 12/44 * 3600 * 24 * 30.5
+  grd$prior.mean = as.vector(gridded_1x1_prior_mean_flux_annual) * 
+    units_scaling
+  grd$posterior.mean = as.vector(gridded_1x1_posterior_mean_flux_annual) * 
+    units_scaling
+  grd$truth = as.vector(gridded_1x1_true_mean_flux_annual) * 
+    units_scaling
+  grd$difference = grd$posterior.mean - grd$truth
+  rng_mn = range(c(grd$prior.mean, grd$posterior.mean, grd$truth, 
+                   grd$difference))
+  plt1 = levelplot(prior.mean ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), at = seq(-max(abs(c(rng_mn))), 
+                                                      max(abs(c(rng_mn))), length = 50), main = c("Annual Prior Mean Flux (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  plt2 = levelplot(posterior.mean ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
+                                                                 max(abs(c(rng_mn))), length = 50), main = c("Annual Posterior Mean Flux (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  plt3 = levelplot(truth ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
+                                                                 max(abs(c(rng_mn))), length = 50), main = c("True Flux (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  plt4 = levelplot(difference ~ longitude + latitude, data = grd, 
+                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
+                                                                 max(abs(c(rng_mn))), length = 50), main = c("Annual Posterior Mean Flux - TRUTH (gC/m2/yr)"), 
+                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
+                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
+                     panel.levelplot(..., at = at, contour = contour, 
+                                     labels = labels)
+                     llines(w$x, w$y, col = "black")
+                   })
+  options(jupyter.plot_scale = 1)
+  print(plt1)
+  print(plt2)
+  print(plt3)
+  print(plt4)
+}
+
+
 pad = function (x, width, fill = " ", left = TRUE) 
 {
   xneg = FALSE
