@@ -18,11 +18,11 @@ retrieval:
   # absco_table: /mydrive/who knows/input_data/absco.h5
   absco_table:
 observations:
-  obspack_folder: ../../observation_example_datasets//obspack_co2_1_GLOBALVIEWplus_v9.1_2023-12-08/data/nc/
+  obspack_folder: /tmp/ssim-ghg-data/observation_example_datasets/obspack_co2_1_GLOBALVIEWplus_v9.1_2023-12-08/data/nc/
   obspack_surface_code: co2_lef_tower-insitu_1_allvalid
   obspack_surface_heights: 30,122,396
   obspack_aircraft_code: co2_lef_aircraft-pfp_1_allvalid
-  tccon_folder: ../../observation_example_datasets/tccon/
+  tccon_folder: /tmp/ssim-ghg-data/observation_example_datasets/tccon/
   tccon_site: pa
-  ameriflux_file: ../../observation_example_datasets/AMF_US-PFa_BASE-BADM_28-5/AMF_US-PFa_BASE_HR_28-5.csv
+  ameriflux_file: /tmp/ssim-ghg-data/observation_example_datasets/AMF_US-PFa_BASE-BADM_28-5/AMF_US-PFa_BASE_HR_28-5.csv
   
