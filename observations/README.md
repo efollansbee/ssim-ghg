@@ -21,3 +21,4 @@ Libraries needed:
 - scipy
 - pyyaml
 - matplotlib
+- seaborn
