@@ -936,11 +936,9 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
   NEE_1x1 = aaply(NEE, 3, .fun = function(x) {
     expand_5x4_2_1x1(x)
   }) %>% aperm(c(2, 3, 1))
-  
   NEE_transcom = aaply(NEE_1x1, 3, .fun = function(x) {
     grid2transcom(x)
   })
-  
   tr_dir = file.path(data_dir, "/transcom/", sep = "")
   x_prior_matrix = matrix(inv_object$prior$x_hat, nrow = 24, 
                           byrow = FALSE)
@@ -948,24 +946,23 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
                         byrow = FALSE)
   true_state_matrix = matrix(true_state, nrow = 24, byrow = FALSE)
   
-  #-- might need NEE_transcom[,2:23], not sure
-  prior_flux_unc = diag(as.vector(NEE_transcom[,1:22])) %*% inv_object$prior$Sx %*%diag(as.vector(NEE_transcom[,1:22]))
-  post_flux_unc = diag(as.vector(NEE_transcom[,1:22])) %*% inv_object$posterior$Sx  %*% diag(as.vector(NEE_transcom[,1:22]))
+  prior_flux_unc = diag(as.vector(NEE_transcom[, c(2:23)])) %*% 
+    inv_object$prior$Sx %*% diag(as.vector(NEE_transcom[,c(2:23)]))
   
-  A = cbind(diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),
-            diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),
-            diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),
-            diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22),diag(1,nrow=22))
+  post_flux_unc = diag(as.vector(NEE_transcom[, c(2:23)])) %*% 
+    inv_object$posterior$Sx %*% diag(as.vector(NEE_transcom[, c(2:23)]))
   
-  annual_avg_prior_flux_cov = 0.5*A%*%prior_flux_unc%*%t(0.5*A) 
-  annual_avg_post_flux_cov = 0.5*A%*%post_flux_unc%*%t(0.5*A)
+  A = matrix(c(rep(c(rep(1,24),rep(0,24*22)),21),rep(1,24)),nrow=22,byrow=TRUE)
   
-  #-- these are plotted
-  gridded_1x1_prior_sd_flux_annual = transcom2grid(sqrt(diag(annual_avg_prior_flux_cov))) * 1e-15
-  gridded_1x1_post_sd_flux_annual =  transcom2grid(sqrt(diag(annual_avg_post_flux_cov)))* 1e-15
+  annual_avg_prior_flux_cov = 0.5 * A %*% prior_flux_unc %*% 
+    t(0.5 * A)
+  annual_avg_post_flux_cov = 0.5 * A %*% post_flux_unc %*% 
+    t(0.5 * A)
+  gridded_1x1_prior_sd_flux_annual = transcom2grid(sqrt(diag(annual_avg_prior_flux_cov))) * 
+    1e-15
+  gridded_1x1_post_sd_flux_annual = transcom2grid(sqrt(diag(annual_avg_post_flux_cov))) * 
+    1e-15
   gridded_1x1_post_sd_reduction_annual = 1 - (gridded_1x1_post_sd_flux_annual/gridded_1x1_prior_sd_flux_annual)
-  ######
-  
   if (!center_prior_on_zero) {
     x_prior_matrix = x_prior_matrix + 1
     x_hat_matrix = x_hat_matrix + 1
@@ -986,16 +983,12 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
   gridded_1x1_prior_mean_flux = NEE_1x1 * gridded_1x1_prior_state
   gridded_1x1_posterior_mean_flux = NEE_1x1 * gridded_1x1_posterior_state
   gridded_1x1_truth = NEE_1x1 * gridded_1x1_true_state
-  
-  #-- these are plotted
   gridded_1x1_prior_mean_flux_annual = apply(gridded_1x1_prior_mean_flux, 
                                              c(1, 2), sum)/2
   gridded_1x1_posterior_mean_flux_annual = apply(gridded_1x1_posterior_mean_flux, 
                                                  c(1, 2), sum)/2
   gridded_1x1_true_mean_flux_annual = apply(gridded_1x1_truth, 
                                             c(1, 2), sum)/2
-  ######
-  
   library(maps)
   w = map("world", plot = FALSE)
   grd = expand.grid(longitude = seq(-179.5, 179.5, by = 1), 
@@ -1008,90 +1001,117 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
   grd$truth = as.vector(gridded_1x1_true_mean_flux_annual) * 
     units_scaling
   grd$difference = grd$posterior.mean - grd$truth
-  
-  grd$prior_sd = as.vector(gridded_1x1_prior_sd_flux_annual)*units_scaling
-  grd$post_sd = as.vector(gridded_1x1_post_sd_flux_annual)*units_scaling  
+  grd$prior_sd = as.vector(gridded_1x1_prior_sd_flux_annual) * 
+    units_scaling
+  grd$post_sd = as.vector(gridded_1x1_post_sd_flux_annual) * 
+    units_scaling
   grd$reduction_sd = as.vector(gridded_1x1_post_sd_reduction_annual)
-  
+  grd$reduction_sd[is.na(grd$reduction_sd)] = 0
   rng_mn = range(c(grd$prior.mean, grd$posterior.mean, grd$truth, 
                    grd$difference))
-
   rng_sd = range(c(grd$prior_sd, grd$post_sd))
   
-  plt1 = levelplot(prior.mean ~ longitude + latitude, data = grd, 
-                   col.regions = my.col(50), at = seq(-max(abs(c(rng_mn))), 
-                                                      max(abs(c(rng_mn))), length = 50), main = c("Annual Prior Mean Flux (gC/m2/yr)"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
-  plt2 = levelplot(posterior.mean ~ longitude + latitude, data = grd, 
-                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
-                                                                 max(abs(c(rng_mn))), length = 50), main = c("Annual Posterior Mean Flux (gC/m2/yr)"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
-  plt3 = levelplot(truth ~ longitude + latitude, data = grd, 
-                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
-                                                                 max(abs(c(rng_mn))), length = 50), main = c("True Flux (gC/m2/yr)"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
-  plt4 = levelplot(difference ~ longitude + latitude, data = grd, 
-                   col.regions = my.col(50), cuts = 50, at = seq(-max(abs(c(rng_mn))), 
-                                                                 max(abs(c(rng_mn))), length = 50), main = c("Annual Posterior Mean Flux - TRUTH (gC/m2/yr)"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
-  plt5 = levelplot(prior_sd ~ longitude + latitude, data = grd, 
-                   col.regions = my.col(50)[26:50], at = seq(0, 
-                                                                 max(abs(c(rng_sd))), length = 25), main = c("Transcom Average* Annual Prior Mean Flux Standard Deviation (PgC/region/yr)"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
-  plt6 = levelplot(post_sd ~ longitude + latitude, data = grd, 
-                   col.regions = my.col(50)[26:50],  at = seq(0, 
-                                                                 max(abs(c(rng_sd))), length = 25), main = c("Transcom Average* Annual Posterior Mean Flux Standard Deviation (PgC/region/yr)"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
-  plt7 = levelplot(reduction_sd ~ longitude + latitude, data = grd, 
-                   col.regions = rev(my.col(50)),  at = seq(-1,1, length = 50), main = c("Transcom Average* Flux Standard Deviation Reduction by Inversion"), 
-                   xlab = "", ylab = "", aspect = "iso", useRaster = TRUE, 
-                   panel = function(..., at, region, contour = FALSE, labels = NULL) {
-                     panel.levelplot(..., at = at, contour = contour, 
-                                     labels = labels)
-                     llines(w$x, w$y, col = "black")
-                   })
+  library(ggplot2)
+  w2 =    as.data.frame(cbind(w$x,w$y))
+  names(w2) = c("x","y")
   
+  
+  
+  
+  # Set color scale limits
+  lims_mn <- seq(-max(abs(c(rng_mn))), max(abs(c(rng_mn))), length.out = 50)
+  lims_sd <- seq(0, max(abs(c(rng_sd))), length.out = 50)
+  
+  plt1=ggplot(grd, aes(x = longitude, y = latitude, fill = prior.mean)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m2/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Annual Prior Mean Flux (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()
+  
+  plt2=ggplot(grd, aes(x = longitude, y = latitude, fill = posterior.mean)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m2/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Annual Posterior Mean Flux (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()
+  
+  plt3=ggplot(grd, aes(x = longitude, y = latitude, fill = truth)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m²/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "True Flux (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()
+  
+  plt4=ggplot(grd, aes(x = longitude, y = latitude, fill = difference)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m²/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Posterior Mean - Truth (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()
+  
+  
+  plt5=ggplot(grd, aes(x = longitude, y = latitude, fill = prior_sd)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50)[26:50],
+      limits = range(lims_sd),
+      name = "PgC/region/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Prior Standard Deviation", x = "", y = "") +
+    theme_minimal()
+  
+  plt6=ggplot(grd, aes(x = longitude, y = latitude, fill = post_sd)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50)[26:50],
+      limits = range(lims_sd),
+      name = "PgC/region/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Posterior Standard Deviation", x = "", y = "") +
+    theme_minimal()
+  
+  plt7=ggplot(grd, aes(x = longitude, y = latitude, fill = reduction_sd)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = rev(my.col(50)),
+      limits = c(-1,1),
+      name = ""
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Uncertainty Reduction: 1-Posterior_SD/Prior_SD", x = "", y = "") +
+    theme_minimal()
+  
+  saved <- options() 
   options(jupyter.plot_scale = 1)
-  print(plt1)
-  print(plt2)
-  print(plt3)
-  print(plt4)
-  print(plt5)
-  print(plt6)
-  print(plt7)
+  options(saved)
+  return(list(plt1,plt2,plt3,plt4,plt5,plt6,plt7))
 }
-
-
 
 pad = function (x, width, fill = " ", left = TRUE) 
 {
@@ -1127,3 +1147,4 @@ ferret_light_centered_palette_63 = c("#00FFFFFF", "#03F4FFFF", "#05E9FFFF", "#08
                                      "#FF7B21FF", "#FF861EFF", "#FF911BFF", "#FF9C19FF",
                                      "#FFA716FF", "#FFB213FF", "#FFBD10FF", "#FFC80EFF", "#FFD30BFF",
                                      "#FFDE08FF", "#FFE905FF", "#FFF403FF", "#FFFF00FF")
+
