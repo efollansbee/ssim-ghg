@@ -925,7 +925,7 @@ print(plt5)
 
 plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state = state_vector_true, 
                                                  prior_mean_ncdf = file.path(data_dir, "priors/prior_SiB4.nc"), 
-                                                 center_prior_on_zero = TRUE) 
+                                                 center_prior_on_zero = TRUE,font_size=24) 
 {
   print("creating gridded fluxes....")
   con = nc_open(prior_mean_ncdf)
@@ -1032,7 +1032,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "Annual Prior Mean Flux (gC/m2/yr)", x = "", y = "") +
-    theme_minimal()
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
   
   plt2=ggplot(grd, aes(x = longitude, y = latitude, fill = posterior.mean)) +
     geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
@@ -1044,7 +1045,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "Annual Posterior Mean Flux (gC/m2/yr)", x = "", y = "") +
-    theme_minimal()
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
   
   plt3=ggplot(grd, aes(x = longitude, y = latitude, fill = truth)) +
     geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
@@ -1056,7 +1058,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "True Flux (gC/m2/yr)", x = "", y = "") +
-    theme_minimal()
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
   
   plt4=ggplot(grd, aes(x = longitude, y = latitude, fill = difference)) +
     geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
@@ -1068,7 +1071,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "Posterior Mean - Truth (gC/m2/yr)", x = "", y = "") +
-    theme_minimal()
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
   
   
   plt5=ggplot(grd, aes(x = longitude, y = latitude, fill = prior_sd)) +
@@ -1081,7 +1085,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "Prior Standard Deviation", x = "", y = "") +
-    theme_minimal()
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
   
   plt6=ggplot(grd, aes(x = longitude, y = latitude, fill = post_sd)) +
     geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
@@ -1093,7 +1098,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "Posterior Standard Deviation", x = "", y = "") +
-    theme_minimal()
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
   
   plt7=ggplot(grd, aes(x = longitude, y = latitude, fill = reduction_sd)) +
     geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
@@ -1105,7 +1111,8 @@ plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state =
     geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
     coord_fixed() +
     labs(title = "Uncertainty Reduction: 1-Posterior_SD/Prior_SD", x = "", y = "") +
-    theme_minimal()
+    theme_minimal() +
+    theme(text = element_text(size = font_size))
   
   saved <- options() 
   options(jupyter.plot_scale = 1)
