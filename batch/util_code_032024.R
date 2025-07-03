@@ -453,7 +453,7 @@ plot_timeseries_flux_bytranscom = function(ret,include_prior_ocn_land=FALSE,incl
                                                                      sum(ret$transcom_fluxes_real_annual_avg)), KIND=rep("Truth",23))
   
   h2 = g2 + geom_point(data=new_data[new_data$REGION == "Global",], aes(x=REGION, y=FLUX, fill=KIND), color="black",bg="green", size=5, pch=21) +
-    ylab("PgC/month") +
+    ylab("PgC/year") +
     theme(axis.text.x = element_text(angle=70,size=15))
   
   plot(h2)
