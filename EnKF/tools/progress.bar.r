@@ -1,4 +1,19 @@
-# Time-stamp: <tropics.local:/local/ct/tools/R/progress.bar.r - 29 Apr 2020 (Wed) 07:22:41 MDT>
+# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/progress.bar.r - 27 Jun 2025 (Fri) 08:18:52 MDT>
+
+# USAGE:
+#
+# tm <- timer.start()
+#  ... stuff ...
+# timer.end(tm,"done with stuff")
+#
+
+timer.start <- function() {
+  retval <- proc.time()[3]
+}
+
+timer.end <- function(timer,message=' ') {
+    cat(sprintf("%s: %.1fs\n",message,proc.time()[3]-timer))
+}
 
 # USAGE:
 #
@@ -14,7 +29,6 @@
 #
 # progress.bar.end(pb)
 #
-
 progress.bar.start <- function(message,nx=NA,pct.minor=1,pct.major=10) {
 
   # I made a mistake when I first coded this.  Message should be

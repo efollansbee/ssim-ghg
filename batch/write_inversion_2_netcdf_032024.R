@@ -1,9 +1,20 @@
-write_inversion_2_netcdfs=function(inv_object=ret2,prior_mean_ncdf=file.path(data_dir,"priors/prior_SiB4.nc"),
+write_inversion_2_netcdfs=function(inv_object=ret2,subobject="posterior",prior_mean_ncdf=file.path(data_dir,"priors/prior_SiB4.nc"),
                           #sensitivity.matrix="/discover/nobackup/projects/csu/aschuh/data/inversion_workshop_data/rdas/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda",
-                          sample_number=40,output_dir=output_dir)
+                          sample_number=40,output_dir=output_dir,added_suffix="")
 {
 #-- set.seed ?  
-  
+
+state_dim_names = inv_object$state_dim_names
+
+inv_object = inv_object[[subobject]]
+if(subobject=="posterior"){inv_object$P = inv_object$Sx_post} 
+if(subobject=="prior"){inv_object$P = inv_object$Sx}
+if(!(subobject %in% c("posterior","prior"))){stop("subobject needs to be either 'posterior' or 'prior'")}
+    
+#-- Set obs and state dims for use later
+obs_length = length(inv_object$outputs$modeled_obs)
+state_length = length(inv_object$x_hat)
+
 #-- Could be mismatch between inv_object's sens matrix and what is loaded here
 #-- need to fix that if we pull in sens matrix
 
@@ -15,15 +26,15 @@ require(plyr)
 require(dplyr)
   
 if(dir.exists(output_dir)){
-  print(paste("overwriting inversion results in",output_dir))
+#  print(paste("overwriting inversion results in",output_dir))
 }else{
   print(paste("creating",output_dir))
   dir.create(output_dir,recursive=TRUE)
 }
 
-outfile_name_state_vector = file.path(output_dir,"state_vector.nc4")
-outfile_name_gridded_fluxes = file.path(output_dir,"gridded_fluxes.nc4")
-outfile_name_cosamples = file.path(output_dir,"cosamples.nc4")
+outfile_name_state_vector = paste(output_dir,"state_vector_",subobject,added_suffix,".nc4",sep="")
+outfile_name_gridded_fluxes = paste(output_dir,"gridded_fluxes_",subobject,added_suffix,".nc4",sep="")
+outfile_name_cosamples = paste(output_dir,"cosamples_",subobject,added_suffix,".nc4",sep="")
 #load(sensitivity.matrix)
 #obs_len = dim(jacob)[[1]]
   
@@ -43,6 +54,8 @@ x_dim <- ncdim_def( "longitude", units="degrees_east", vals=seq(-179.5,179.5,by=
 y_dim <- ncdim_def( "latitude", units="degrees_north", vals=seq(-89.5,89.5,1))
 
 cosample_dim <- ncdim_def( "cosamples", units="", vals=1:length(inv_object$inputs$obs_errors))
+
+dimnchar   <- ncdim_def("nchar",   "", 1:200, create_dimvar=FALSE )
 
 #######################################
 #--  create netcdf vars for statevector
@@ -73,13 +86,13 @@ varSTATE_COV = ncvar_def(name="scaling_factor_covariance",
 #######################################
 
 varOBS_TYPE = ncvar_def(name="observation_type",
-                         units="mole fraction CO2",
-                         dim=cosample_dim,
+                         units="",
+                        dim=list(dimnchar, cosample_dim),
                          prec="char")
 
 varOBS_ID = ncvar_def(name="observation_id",
-                       units="mole fraction CO2",
-                       dim=cosample_dim,
+                       units="",
+                       dim=list(dimnchar, cosample_dim),
                        prec="char")
 
 varOBS_MEAN = ncvar_def(name="mole_fraction_mean",
@@ -155,7 +168,7 @@ ncvar_put(ncnew_statevector,varSTATE_MEAN,vals=inv_object$x_hat)
 
 ncvar_put(ncnew_statevector,varSTATE_SAMPLE,vals=t(samps))
 
-ncvar_put(ncnew_statevector,varSTATE_NAME,vals=dimnames(jacob)[[2]])
+ncvar_put(ncnew_statevector,varSTATE_NAME,vals=state_dim_names)
 
 ncvar_put(ncnew_statevector,varSTATE_COV,vals=inv_object$P)
           
@@ -237,7 +250,7 @@ obs_id = inv_object$inputs$obs_id
 
 obs_orig = inv_object$inputs$obs
 
-obs_type = rep("SAT_XCO2",dim(jacob)[1])
+obs_type = rep("SAT_XCO2",obs_length)
 obs_type[grep("obspack",obs_id)] = "INSITU"
 nch = sapply(obs_id,nchar)
 obs_type[nch==14] = "TCCON_XCO2"
