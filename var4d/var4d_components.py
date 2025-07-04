@@ -194,6 +194,9 @@ class Fluxes(RunSpecs):
         state_vector = 0.001 * 44.01 * 1.0E-6 * state_vector
 
         return state_vector
+    
+    def convert_state_to_2d(self, input_state):
+        pass
 
     def construct_state_vector_from_sib4(self, smush_regions=True, land_var='I2b', ocean_var='Fnetoce'):
         ym_tuples = []
