@@ -453,7 +453,7 @@ plot_timeseries_flux_bytranscom = function(ret,include_prior_ocn_land=FALSE,incl
                                                                      sum(ret$transcom_fluxes_real_annual_avg)), KIND=rep("Truth",23))
   
   h2 = g2 + geom_point(data=new_data[new_data$REGION == "Global",], aes(x=REGION, y=FLUX, fill=KIND), color="black",bg="green", size=5, pch=21) +
-    ylab("PgC/month") +
+    ylab("PgC/year") +
     theme(axis.text.x = element_text(angle=70,size=15))
   
   plot(h2)
@@ -908,7 +908,7 @@ plt4 = levelplot(posterior.sd ~ longitude + latitude,data=grd,col.regions=my.col
 
 plt5 = levelplot(reduction.sd ~ longitude + latitude,data=grd,col.regions=my.col(50),cuts=50,
                  at=seq(-max(abs(c(rng_sd_reduction))),max(abs(c(rng_sd_reduction))),length=50),
-                 main=c("Annual Flux Reduction in Standard Deviation ( 1 - (Prior_SD - Post_SD)/Prior_SD) )"), xlab="",ylab="",aspect="iso",useRaster=TRUE,
+                 main=c("Annual Flux Reduction in Standard Deviation ( 1 - (posterior sd)/(prior sd) )"), xlab="",ylab="",aspect="iso",useRaster=TRUE,
                  panel = function(..., at, region,contour = FALSE, labels = NULL) {
                    panel.levelplot(..., at = at, contour = contour,labels = labels)
                    llines(w$x,w$y,col="black")})
@@ -921,6 +921,203 @@ print(plt3)
 print(plt4)
 print(plt5)
 
+}
+
+plot_flux_maps_annual_prior_post_truth=function (inv_object = ret2, true_state = state_vector_true, 
+                                                 prior_mean_ncdf = file.path(data_dir, "priors/prior_SiB4.nc"), 
+                                                 center_prior_on_zero = TRUE,font_size=24) 
+{
+  print("creating gridded fluxes....")
+  con = nc_open(prior_mean_ncdf)
+  longitude_prior = con$dim$longitude$vals
+  latitude_prior = con$dim$latitude$vals
+  NEE = ncvar_get(con, "NEE")
+  nc_close(con)
+  NEE_1x1 = aaply(NEE, 3, .fun = function(x) {
+    expand_5x4_2_1x1(x)
+  }) %>% aperm(c(2, 3, 1))
+  NEE_transcom = aaply(NEE_1x1, 3, .fun = function(x) {
+    grid2transcom(x)
+  })
+  tr_dir = file.path(data_dir, "/transcom/", sep = "")
+  x_prior_matrix = matrix(inv_object$prior$x_hat, nrow = 24, 
+                          byrow = FALSE)
+  x_hat_matrix = matrix(inv_object$posterior$x_hat, nrow = 24, 
+                        byrow = FALSE)
+  true_state_matrix = matrix(true_state, nrow = 24, byrow = FALSE)
+  
+  prior_flux_unc = diag(as.vector(NEE_transcom[, c(2:23)])) %*% 
+    inv_object$prior$Sx %*% diag(as.vector(NEE_transcom[,c(2:23)]))
+  
+  post_flux_unc = diag(as.vector(NEE_transcom[, c(2:23)])) %*% 
+    inv_object$posterior$Sx %*% diag(as.vector(NEE_transcom[, c(2:23)]))
+  
+  A = matrix(c(rep(c(rep(1,24),rep(0,24*22)),21),rep(1,24)),nrow=22,byrow=TRUE)
+  
+  annual_avg_prior_flux_cov = 0.5 * A %*% prior_flux_unc %*% 
+    t(0.5 * A)
+  annual_avg_post_flux_cov = 0.5 * A %*% post_flux_unc %*% 
+    t(0.5 * A)
+  gridded_1x1_prior_sd_flux_annual = transcom2grid(sqrt(diag(annual_avg_prior_flux_cov))) * 
+    1e-15
+  gridded_1x1_post_sd_flux_annual = transcom2grid(sqrt(diag(annual_avg_post_flux_cov))) * 
+    1e-15
+  gridded_1x1_post_sd_reduction_annual = 1 - (gridded_1x1_post_sd_flux_annual/gridded_1x1_prior_sd_flux_annual)
+  if (!center_prior_on_zero) {
+    x_prior_matrix = x_prior_matrix + 1
+    x_hat_matrix = x_hat_matrix + 1
+    true_state_matrix = true_state_matrix + 1
+  }
+  gridded_1x1_prior_state = aaply(x_prior_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_posterior_state = aaply(x_hat_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_true_state = aaply(true_state_matrix, 1, .fun = function(x) {
+    transcom2grid(x, model.grid.x = 1, model.grid.y = 1, 
+                  file_location = data_dir)
+  }) %>% aperm(c(2, 3, 1))
+  gridded_1x1_prior_mean_flux = NEE_1x1 * gridded_1x1_prior_state
+  gridded_1x1_posterior_mean_flux = NEE_1x1 * gridded_1x1_posterior_state
+  gridded_1x1_truth = NEE_1x1 * gridded_1x1_true_state
+  gridded_1x1_prior_mean_flux_annual = apply(gridded_1x1_prior_mean_flux, 
+                                             c(1, 2), sum)/2
+  gridded_1x1_posterior_mean_flux_annual = apply(gridded_1x1_posterior_mean_flux, 
+                                                 c(1, 2), sum)/2
+  gridded_1x1_true_mean_flux_annual = apply(gridded_1x1_truth, 
+                                            c(1, 2), sum)/2
+  library(maps)
+  w = map("world", plot = FALSE)
+  grd = expand.grid(longitude = seq(-179.5, 179.5, by = 1), 
+                    latitude = seq(-89.5, 89.5, by = 1))
+  units_scaling = 1000 * 12/44 * 3600 * 24 * 30.5
+  grd$prior.mean = as.vector(gridded_1x1_prior_mean_flux_annual) * 
+    units_scaling
+  grd$posterior.mean = as.vector(gridded_1x1_posterior_mean_flux_annual) * 
+    units_scaling
+  grd$truth = as.vector(gridded_1x1_true_mean_flux_annual) * 
+    units_scaling
+  grd$difference = grd$posterior.mean - grd$truth
+  grd$prior_sd = as.vector(gridded_1x1_prior_sd_flux_annual) * 
+    units_scaling
+  grd$post_sd = as.vector(gridded_1x1_post_sd_flux_annual) * 
+    units_scaling
+  grd$reduction_sd = as.vector(gridded_1x1_post_sd_reduction_annual)
+  grd$reduction_sd[is.na(grd$reduction_sd)] = 0
+  rng_mn = range(c(grd$prior.mean, grd$posterior.mean, grd$truth, 
+                   grd$difference))
+  rng_sd = range(c(grd$prior_sd, grd$post_sd))
+  
+  library(ggplot2)
+  w2 =    as.data.frame(cbind(w$x,w$y))
+  names(w2) = c("x","y")
+  
+  
+  
+  
+  # Set color scale limits
+  lims_mn <- seq(-max(abs(c(rng_mn))), max(abs(c(rng_mn))), length.out = 50)
+  lims_sd <- seq(0, max(abs(c(rng_sd))), length.out = 50)
+  
+  plt1=ggplot(grd, aes(x = longitude, y = latitude, fill = prior.mean)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m2/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Annual Prior Mean Flux (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
+  
+  plt2=ggplot(grd, aes(x = longitude, y = latitude, fill = posterior.mean)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m2/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Annual Posterior Mean Flux (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
+  
+  plt3=ggplot(grd, aes(x = longitude, y = latitude, fill = truth)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m²/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "True Flux (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
+  
+  plt4=ggplot(grd, aes(x = longitude, y = latitude, fill = difference)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50),
+      limits = range(lims_mn),
+      name = "gC/m²/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Posterior Mean - Truth (gC/m2/yr)", x = "", y = "") +
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
+  
+  
+  plt5=ggplot(grd, aes(x = longitude, y = latitude, fill = prior_sd)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50)[26:50],
+      limits = range(lims_sd),
+      name = "PgC/region/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Prior Standard Deviation", x = "", y = "") +
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
+  
+  plt6=ggplot(grd, aes(x = longitude, y = latitude, fill = post_sd)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = my.col(50)[26:50],
+      limits = range(lims_sd),
+      name = "PgC/region/yr"
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Posterior Standard Deviation", x = "", y = "") +
+    theme_minimal()+
+    theme(text = element_text(size = font_size))
+  
+  plt7=ggplot(grd, aes(x = longitude, y = latitude, fill = reduction_sd)) +
+    geom_raster(interpolate = TRUE) +  # Or use geom_tile() if you want crisp edges
+    scale_fill_gradientn(
+      colours = rev(my.col(50)),
+      limits = c(-1,1),
+      name = ""
+    ) +
+    geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black") +
+    coord_fixed() +
+    labs(title = "Uncertainty Reduction: 1-Posterior_SD/Prior_SD", x = "", y = "") +
+    theme_minimal() +
+    theme(text = element_text(size = font_size))
+  
+  saved <- options() 
+  options(jupyter.plot_scale = 1)
+  options(saved)
+  return(list(plt1,plt2,plt3,plt4,plt5,plt6,plt7))
 }
 
 pad = function (x, width, fill = " ", left = TRUE) 
@@ -957,3 +1154,4 @@ ferret_light_centered_palette_63 = c("#00FFFFFF", "#03F4FFFF", "#05E9FFFF", "#08
                                      "#FF7B21FF", "#FF861EFF", "#FF911BFF", "#FF9C19FF",
                                      "#FFA716FF", "#FFB213FF", "#FFBD10FF", "#FFC80EFF", "#FFD30BFF",
                                      "#FFDE08FF", "#FFE905FF", "#FFF403FF", "#FFFF00FF")
+
