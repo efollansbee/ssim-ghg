@@ -7,7 +7,7 @@ import os, yaml
 # Where are the ABSCO tables kept?
 with open('../site_settings.yml', 'r') as fid:
     conf = yaml.safe_load(fid)
-ABSCO_TABLE_FILE = conf['retrieval']['absco_table']
+ABSCO_TABLE_FILE = os.path.join(conf['global_paths']['input_folder'], conf['retrieval']['absco_table'])
 
 #0.76 um O2 A-band, 1.60 um weak CO2 band, 1.65 um CH4 band
 band_max_wn = np.array([13190.0,6285.0,6150.0]) #cm^-1

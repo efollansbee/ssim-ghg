@@ -14,6 +14,13 @@ global_paths:
   # output_folder: /mydrive/another drive/my name/output
   output_folder:
 retrieval:
-  # the full path of absco.h5, e.g.,
-  # absco_table: /mydrive/who knows/input_data/absco.h5
-  absco_table:
+  # the path of absco.h5 relative to input_folder
+  absco_table: absco/absco.h5
+observations:
+  obspack_folder: observation_example_datasets/obspack_co2_1_GLOBALVIEWplus_v9.1_2023-12-08/data/nc
+  obspack_surface_code: co2_lef_tower-insitu_1_allvalid
+  obspack_surface_heights: 30,122,396
+  obspack_aircraft_code: co2_lef_aircraft-pfp_1_allvalid
+  tccon_folder: tccon
+  tccon_site: pa
+  ameriflux_file: observation_example_datasets/AMF_US-PFa_BASE-BADM_28-5/AMF_US-PFa_BASE_HR_28-5.csv
