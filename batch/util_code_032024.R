@@ -711,7 +711,7 @@ plot_Jacobian_cols_observations = function(transcom_region=1:3,month=1:3,
     df3 <- melt(df2[,-1] ,  id.vars = 'DATE', variable.name = 'series')
     
     
-    options(repr.plot.width=20, repr.plot.height=8)
+    #options(repr.plot.width=20, repr.plot.height=8)
     
 
     g =  ggplot(df3, aes(x = DATE, y = value)) + 
@@ -749,7 +749,7 @@ plot_Jacobian_rows_fluxes = function(row_number){
     ord = order(names(df2))
     df2 = df2[ord]
     
-    options(repr.plot.width=20, repr.plot.height=8)
+    #options(repr.plot.width=20, repr.plot.height=8)
 
 #-- Transcom region labels for regions 1:22
 transcom_names = c("North American Boreal    ", "North American Temperate ",
@@ -775,7 +775,7 @@ transcom_names = c("North American Boreal    ", "North American Temperate ",
 plot_base_pulse_flux = function(month=c(1),transcom_region=c(1)){
   
   old_opt = options()
-  options(repr.plot.width=12, repr.plot.height=8)
+  #options(repr.plot.width=12, repr.plot.height=8)
   #-- Transcom region labels for regions 1:22
   transcom_names = c("North American Boreal    ", "North American Temperate ",
                      "South American Tropical  ", "South American Temperate ",
@@ -1155,3 +1155,9 @@ ferret_light_centered_palette_63 = c("#00FFFFFF", "#03F4FFFF", "#05E9FFFF", "#08
                                      "#FFA716FF", "#FFB213FF", "#FFBD10FF", "#FFC80EFF", "#FFD30BFF",
                                      "#FFDE08FF", "#FFE905FF", "#FFF403FF", "#FFFF00FF")
 
+geom_map <- function() {
+  w <- maps::map("world", plot = FALSE)
+  w2 <- as.data.frame(cbind(w$x,w$y))
+  names(w2) <- c("x","y")
+  geom_path(data = w2, aes(x = x, y = y), linewidth = 0.25, inherit.aes = FALSE, color = "black")
+}
