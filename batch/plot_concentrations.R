@@ -43,7 +43,7 @@ for(i in 1:length(site_strings))
   
  df2 = df[ind,]
   
- options(repr.plot.width=20, repr.plot.height=8)
+ #options(repr.plot.width=20, repr.plot.height=8)
  
   g =  ggplot(df2, aes(x = DATE, y = VALUE,color=TYPE)) + 
     scale_color_manual(values = c("blue","red","black")) +

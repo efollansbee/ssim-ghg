@@ -329,7 +329,7 @@ plot_transcom_flux_by_month = function(ret){
     combined_df$MONTH = factor(combined_df$MONTH,levels=1:24)
     require(ggplot2)
     
-    options(repr.plot.width=20, repr.plot.height=8)
+    #options(repr.plot.width=20, repr.plot.height=8)
     
     #-- This plot is monthly avg regional flux (in units of PgC/yr), plotted for 2 years
     
@@ -557,7 +557,7 @@ plot_inversion_correlations = function(org_data)
   rng1 = max(abs(c(as.vector(prior_cor_flux),c(as.vector(post_cor_flux)))),na.rm=TRUE)
   rng2 = max(abs(c(as.vector(prior_time_cor_flux),c(as.vector(post_time_cor_flux)))),na.rm=TRUE)
   
-  options(repr.plot.width = 20, repr.plot.height = 20)
+  #options(repr.plot.width = 20, repr.plot.height = 20)
   
   p1 = levelplot(prior_cor_flux,col.regions=my.col(40),
                  at=seq(-rng1,rng1,length=40),main="Prior Correlation in Avg Annual Flux between Transcom Region ",scales=list(x=list(rot=60)),
@@ -598,7 +598,7 @@ plot_inversion_correlations_by_transcom = function(org_data)
   
   rng1 = max(abs(c(as.vector(prior_cor_flux),c(as.vector(post_cor_flux)))),na.rm=TRUE)
   
-  options(repr.plot.width = 20, repr.plot.height = 20)
+  #options(repr.plot.width = 20, repr.plot.height = 20)
   
   p1 = levelplot(prior_cor_flux,col.regions=my.col(20),at=seq(-rng1,rng1,length=20),main=paste("Prior Correlation in Month to Month flux for",transcom_names[i]),scales=list(x=list(rot=60)),
                  xlab="",ylab="")
