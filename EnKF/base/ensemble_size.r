@@ -1,9 +1,8 @@
-# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 27 Jun 2025 (Fri) 15:26:29 MDT>
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 07 Jul 2025 (Mon) 12:48:58 MDT>"
+cat(sprintf("[Script info] %s\n",time.stamp))
 
-# This code applies the EnKF measurement update to a truth condition
-# generated from scaling factors derived from OCO-2 v10 MIP models,
-# without any time propagation. This means that the state vector is
-# exactly that of the toy problem.
+# This code applies the EnKF measurement update with a varying number
+# of ensemble members.
 
 # Add local library for R packages
 .libPaths(new=c(sprintf("%s/shared/lib/R-4.3/x86_64-pc-linux-gnu",Sys.getenv("HOME")),.libPaths())) 
@@ -82,7 +81,7 @@ truth_condition <- truth_condition + 1.0
 # generate obs
 nobs <- dim(H)[1]
 # "d" suffix means its the diagonal (of a diagonal matrix)
-Szd.actual <- rep(0.5^2,nobs) # variance in ppm^2
+Szd.actual <- rep(0.3^2,nobs) # variance in ppm^2
 #Szd.assumed <- rep((0.1)^2,nobs) # variance in ppm^2
 Szd.assumed <- Szd.actual
 # Note that supplying a Szd argument to the simulate_observed function
@@ -106,7 +105,13 @@ pctage <- 100*n.selected/nobs
 cat(sprintf("%d obs selected out of %d available (%.1f%%)\n",
             n.selected,nobs,pctage))
 
-posterior.dofs <- TRUE
+posterior.dofs <- FALSE
+
+if(posterior.dofs) {
+  ndofs.kf <- ndofs.patil(state.kf$Sx.post)
+} else {
+  ndofs.kf <- nmons*nreg
+}
 
 # assimilate
 these.obs <- obs[lx.selected]
@@ -116,10 +121,8 @@ these.Szd <- Szd.assumed[lx.selected]
 
 # Perform the analytical KF inversion as a baseline
 state.kf <- list()
-state.kf$x.prior <- matrix(NA,nrow=nparms,ncol=1)
-#state.kf$Sx.prior <- matrix(NA,nrow=nmemb,ncol=nparms)
+state.kf$x.prior <- matrix(1,nrow=nparms,ncol=1)
 state.kf$x.post <- matrix(NA,nrow=nparms,ncol=1)
-#state.kf$Sx.post <- matrix(NA,nrow=nmemb,ncol=nparms)
 
 # We need a state vector and an ensemble with the total number of
 # parameters, 22x24, to multiply the Jacobian H. 
@@ -128,8 +131,9 @@ y.prior <- simulate_observed(H=H[lx.selected,],
                              x=state.kf$x.prior)
 cat(sprintf('y.prior computed: %.1fs\n',proc.time()[3]-t0))
 
-
-Sx.prior <- diag(1,nparms)
+# diag() can form a diagonal matrix from a vector, or extract the
+# diagonal of a matrix. Behavior depends on its argument.
+Sx.prior <- diag(1.3,nparms) 
 state.kf$x.prior[,1] <- 1
 state.kf$Sx.prior <- Sx.prior
 
@@ -147,11 +151,24 @@ cat(sprintf('KF update: %.1fs\n',proc.time()[3]-t0))
 
 state.kf$x.post <- post$x
 state.kf$Sx.post <- post$Sx
+y.kf.post <- simulate_observed(x=state.kf$x.post,H=H[lx.selected,])
+y.kf.prior <- y.prior
+
+
+chi2.state.kf <- (1/ndofs.kf) * t(state.kf$x.post - truth_condition) %*% solve(state.kf$Sx.post) %*% (state.kf$x.post - truth_condition)
+chi2.prior.kf <- (1/ndofs.kf) * t(state.kf$x.prior - truth_condition) %*% solve(state.kf$Sx.prior) %*% (state.kf$x.prior - truth_condition)
+chi2.innov.kf <- (1/ndofs.kf) * t(state.kf$x.post - state.kf$x.prior) %*% solve(state.kf$Sx.prior) %*% (state.kf$x.post - state.kf$x.prior)
+
+chi2.obs.kf <- (1/n.selected) * t(obs[lx.selected] - y.kf.prior) %*% solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.kf.prior)
+
+cat(sprintf(" [KF] chi2 means: state %.2f, prior %.2f, innov %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f\n",
+            chi2.state.kf,chi2.prior.kf,chi2.innov.kf,chi2.obs.kf,ndofs.kf,ndofs.patil(state.kf$Sx.post),compute.rmse(state.kf$x.post - truth_condition)))
+
 
 for (nmemb in c(seq(1000,10000,by=1000),20000,100000)) {
     
     state.ens <- list()
-    state.ens$x.prior <- matrix(NA,nrow=nparms,ncol=1)
+    state.ens$x.prior <- matrix(1,nrow=nparms,ncol=1)
     state.ens$dx.prior <- matrix(NA,nrow=nmemb,ncol=nparms)
     state.ens$x.post <- matrix(NA,nrow=nparms,ncol=1)
     state.ens$dx.post <- matrix(NA,nrow=nmemb,ncol=nparms)
@@ -161,15 +178,16 @@ for (nmemb in c(seq(1000,10000,by=1000),20000,100000)) {
 
     
 
-    t0 <- proc.time()[3]
-    y.prior <- simulate_observed(H=H[lx.selected,],
-                                 x=state.ens$x.prior)
+#    t0 <- proc.time()[3]
+#    y.prior <- simulate_observed(H=H[lx.selected,],
+#                                 x=state.ens$x.prior)
+    y.ens.prior <- y.prior
     dy.prior <- t(simulate_observed(H=H[lx.selected,],
                                     x=t(state.ens$dx.prior)))
-    cat(sprintf('y,dy.prior for %d members computed: %.1fs\n',nmemb,proc.time()[3]-t0))
+#    cat(sprintf('y,dy.prior for %d members computed: %.1fs\n',nmemb,proc.time()[3]-t0))
 
     
-    t0 <- proc.time()[3]
+#    t0 <- proc.time()[3]
     post <- enkf_meas_update_loc(x=state.ens$x.prior,
                                  dx=state.ens$dx.prior,
                                  obs=these.obs,
@@ -177,56 +195,37 @@ for (nmemb in c(seq(1000,10000,by=1000),20000,100000)) {
                                  y=y.prior,dy=dy.prior,
                                  localization_mask=NULL)
     
-    cat(sprintf('EnKF computed: %.1fs\n',proc.time()[3]-t0))
+#    cat(sprintf('EnKF computed: %.1fs\n',proc.time()[3]-t0))
 
     state.ens$x.post <- post$x
     state.ens$dx.post <- post$dx
 
     # Compute sample covariance matrices (528x528)
-    state.ens$Sx <- matrix(0,nrow=nmons*nreg,ncol=nmons*nreg)
+    state.ens$Sx.post <- matrix(0,nrow=nmons*nreg,ncol=nmons*nreg)
     state.ens$Sx.prior <- matrix(0,nrow=nmons*nreg,ncol=nmons*nreg)
-    state.ens$Sx <- cov(state.ens$dx.post)  
+    state.ens$Sx.post <- cov(state.ens$dx.post)  
     state.ens$Sx.prior <- cov(state.ens$dx.prior)
 
 
 
     if(posterior.dofs) {
         ndofs.ens <- ndofs.patil(state.ens$Sx)
-        ndofs.kf <- ndofs.patil(state.kf$Sx.post)
     } else {
         ndofs.ens <- nmons*nreg
-        ndofs.kf <- nmons*nreg
     }
 
     # Except we can't have any more DOFs than ensemble members
     ndofs.ens <- min(ndofs.ens,nmemb)
 
-    #state$x.post.finals <- t(state$x.post[seq(1,length.out=22,by=3),1:nmons])
-    #dim(state$x.post.finals) <- c(nmons*nreg,1)
-
-    # This is where we finally use lx.selected, to make posterior
-    # simulated values for the measurements we assimilated.
-#    obs.enkf.post <- simulate_observed(x=state.ens$x.post.finals,H=H[lx.selected.all,])
-    obs.ens.post <- simulate_observed(x=state.ens$x.post,H=H[lx.selected,])
-    obs.kf.post <- simulate_observed(x=state.kf$x.post,H=H[lx.selected,])
-
-    # Need an x vector with all ones to find "prior" simulated
-    # values. This is potentially a confusing use of the term prior. In
-    # the (En)KF, you have a prior state at time k which is conditional on
-    # all the obs already assimilated, from times 1 to k-1. This use of
-    # the term prior would perhaps better be called "unoptimized"; we use
-    # it here to represent the simulated values you'd get from the
-    ## unscaled fluxes from our prior models (SiB4 and Landschutzer).
-    x.prior <- matrix(1,nrow=nreg*nmons,ncol=1)
-
-    chi2.state.ens <- (1/ndofs.ens) * t(state.ens$x.post - truth_condition) %*% solve(state.ens$Sx) %*% (state.ens$x.post - truth_condition)
-    chi2.prior.ens <- (1/(ndofs.ens)) * t(state.ens$x.post - x.prior) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.post - x.prior)
-
-    chi2.obs.ens <- (1/(nobs-(nreg*nmons))) * t(obs[lx.selected] - obs.ens.post) %*% diag(1/Szd.assumed[lx.selected]) %*% (obs[lx.selected] - obs.ens.post)
-
-    cat(sprintf(" [Ens] chi2 means: state %.2f, prior %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members)\n",
-                chi2.state.ens,chi2.prior.ens,chi2.obs.ens,ndofs.ens,ndofs.patil(state.ens$Sx),compute.rmse(state.ens$x.post - truth_condition),nmemb))
-
+    chi2.state.ens <- (1/ndofs.ens) * t(state.ens$x.post - truth_condition) %*% solve(state.ens$Sx.post) %*% (state.ens$x.post - truth_condition)
+    chi2.prior.ens <- (1/ndofs.ens) * t(state.ens$x.prior - truth_condition) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.prior - truth_condition)
+    chi2.innov.ens <- (1/ndofs.ens) * t(state.ens$x.post - state.ens$x.prior) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.post - state.ens$x.prior)
+    
+    chi2.obs.ens <- (1/n.selected) * t(obs[lx.selected] - y.ens.prior) %*% solve(H[lx.selected,] %*% state.ens$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.ens.prior)
+    
+    cat(sprintf("[Ens] chi2 means: state %.2f, prior %.2f, innov %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members)\n",
+                chi2.state.ens,chi2.prior.ens,chi2.innov.ens,chi2.obs.ens,ndofs.ens,ndofs.patil(state.ens$Sx.post),compute.rmse(state.ens$x.post - truth_condition),nmemb))
+    
     if(FALSE) {
         plot.x.timeseries(ests=list(Truth=list(x=truth_condition),
                                     Ensemble=list(x=state.ens$x.post,Sx=state.ens$Sx),
