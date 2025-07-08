@@ -1,4 +1,4 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 08 Jul 2025 (Tue) 14:53:53 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 08 Jul 2025 (Tue) 15:06:34 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update with a varying number
@@ -255,5 +255,5 @@ legend(x='topleft',legend=c('ensemble','KF','target'),
        
 
 if(make.pdfs) {
-    dev.close()
+    dev.off()
 }
