@@ -7,7 +7,7 @@ This notebook demonstrates some analyses of different observation datasets at th
 4. Diurnal cycles in surface in situ data
 5. Eddy covariance CO2 flux measurements
 
-FFrom the command line, run `aws s3 sync s3://ghg-ssim/ssim-ghg-data /tmp/ssim-ghg-data` to download the needed data to your local temp directory. Navigate to `~/ssim-ghg/` and copy `site_settings.yml.tmp` to `site_settings.yml`. Open `site_settings.yml` in an editor like `vi` or Jupyter itself and add `/tmp/ssim-ghg-data/` after the colon on the `input_folder` line under `global_paths`. 
+FFrom the command line, run `aws s3 sync s3://ghg-ssim/ssim-ghg-data /tmp/ssim-ghg-data` to download the needed data to your local temp directory. Navigate to `~/ssim-ghg/` and copy `site_settings.yml.tmp` to `site_settings.yml`. 
 
  *If you are doing this work outside of the US GHGHub, you will need to place the data in a different place and modify the `site_settings.yml` file accordingly.*
 
