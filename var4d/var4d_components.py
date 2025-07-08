@@ -1,45 +1,11 @@
 import numpy as np
 from netCDF4 import Dataset
-import os, pickle, time, numbers, calendar
+import os, pickle, numbers, calendar
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from convert_jacobian import Paths
+from convert_jacobian import Paths, Timer
 from scipy import optimize
 from tqdm.auto import tqdm
-
-class Timer(object):
-    indent_levels = [] # data to be shared across all instances to keep track of indentation level
-    def __init__(self, msg, **kwargs):
-        self.msg = msg
-        self.print_msg = kwargs['print'] if 'print' in kwargs else True
-        self.addendum = {}
-
-    def __enter__(self):
-        self.t1 = time.time()
-        self.indent_levels.append(1)
-        return self.addendum
-
-    def __exit__(self, ex_type, ex_value, ex_traceback):
-        t2 = time.time()
-        dt = t2-self.t1
-        num_indents = len(self.indent_levels)
-        if self.print_msg:
-            if 'prefix' in self.addendum:
-                print_line = "  "*num_indents + "%s %s %s"%(self.addendum['prefix'], self.msg, self.format_dt(dt))
-            else:
-                print_line = "  "*num_indents + "%s %s"%(self.msg, self.format_dt(dt))
-            if 'postfix' in self.addendum:
-                print_line = '%s %s'%(print_line, self.addendum['postfix'])
-            print(print_line)
-        _ = self.indent_levels.pop(0)
-
-    def format_dt(self, dt):
-        if dt > 60.0:
-            minutes = dt // 60
-            seconds = dt % 60.0
-            return "%im %.2fs"%(minutes, seconds)
-        else:
-            return "%.2fs"%dt
 
 class RunSpecs(Paths):
 
@@ -194,7 +160,7 @@ class Fluxes(RunSpecs):
         state_vector = 0.001 * 44.01 * 1.0E-6 * state_vector
 
         return state_vector
-    
+
     def convert_state_to_2d(self, input_state):
         pass
 
