@@ -1,4 +1,4 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/common_problem.r - 07 Jul 2025 (Mon) 12:39:12 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/common_problem.r - 08 Jul 2025 (Tue) 14:17:50 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update to a truth condition
@@ -128,7 +128,9 @@ state.kf$Sx.prior <- matrix(NA,nrow=nmemb,ncol=nparms)
 state.kf$x.post <- matrix(NA,nrow=nparms,ncol=1)
 state.kf$Sx.post <- matrix(NA,nrow=nmemb,ncol=nparms)
 
-Sx.prior <- diag(1.25,nparms)
+# diag() can form a diagonal matrix from a vector, or extract the
+# diagonal of a matrix. Behavior depends on its argument.
+Sx.prior <- diag(1.4,nparms)
 state.kf$x.prior[,1] <- 1
 state.ens$x.prior[,1] <- 1
 state.kf$Sx.prior <- Sx.prior
@@ -245,53 +247,54 @@ obs.kf.prior <- y.prior
 obs.kf.post <- simulate_observed(x=state.kf$x.post,H=H[lx.selected,])
 
 chi2.state.ens <- (1/ndofs.ens) * t(state.ens$x.post - truth_condition) %*% solve(state.ens$Sx.post) %*% (state.ens$x.post - truth_condition)
-chi2.prior.ens <- (1/ndofs.ens) * t(state.ens$x.prior - truth_condition) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.prior - truth_condition)
-chi2.innov.ens <- (1/ndofs.ens) * t(state.ens$x.post - state.ens$x.prior) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.post - state.ens$x.prior)
-
 chi2.obs.ens <- (1/n.selected) * t(obs[lx.selected] - obs.ens.prior) %*% solve(H[lx.selected,] %*% state.ens$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - obs.ens.prior)
 
-cat(sprintf("[Ens] chi2 means: state %.2f, prior %.2f, innov %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members)\n",
-            chi2.state.ens,chi2.prior.ens,chi2.innov.ens,chi2.obs.ens,ndofs.ens,ndofs.patil(state.ens$Sx.post),compute.rmse(state.ens$x.post - truth_condition),nmemb))
+cat(sprintf("[Ens] chi2 means: state %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members)\n",
+            chi2.state.ens,chi2.obs.ens,ndofs.ens,ndofs.patil(state.ens$Sx.post),compute.rmse(state.ens$x.post - truth_condition),nmemb))
 
 chi2.state.kf <- (1/ndofs.kf) * t(state.kf$x.post - truth_condition) %*% solve(state.kf$Sx.post) %*% (state.kf$x.post - truth_condition)
-chi2.prior.kf <- (1/ndofs.kf) * t(state.kf$x.prior - truth_condition) %*% solve(state.kf$Sx.prior) %*% (state.kf$x.prior - truth_condition)
-chi2.innov.kf <- (1/ndofs.kf) * t(state.kf$x.post - state.kf$x.prior) %*% solve(state.kf$Sx.prior) %*% (state.kf$x.post - state.kf$x.prior)
-
 resid.kf <- obs[lx.selected] - obs.kf.prior
 chi2.obs.kf <- (1/n.selected) * t(resid.kf) %*% solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (resid.kf)
 
-cat(sprintf(" [KF] chi2 means: state %.2f, prior %.2f, innov %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f\n",
-            chi2.state.kf,chi2.prior.kf,chi2.innov.kf,chi2.obs.kf,ndofs.kf,ndofs.patil(state.kf$Sx.post),compute.rmse(state.kf$x.post - truth_condition)))
+cat(sprintf(" [KF] chi2 means: state %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f\n",
+            chi2.state.kf,chi2.obs.kf,ndofs.kf,ndofs.patil(state.kf$Sx.post),compute.rmse(state.kf$x.post - truth_condition)))
 
 if(make.pdfs) {
     pdf("common.diagnostics.pdf",width=11,height=8)
 }
 
+
 denom <-  chol(solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,])+ diag(Szd.assumed[lx.selected]),tol=1e-8))
 resid.z.kf <-  denom %*% resid.kf
-cat("[KF] stats on normalized measurement forecast residuals\n")
+cat(sprintf("[KF] stats on normalized measurement forecast residuals:\n"))
 normality.test(resid.z.kf,known.mean=0,known.sd=1)
 
 resid.ens <- obs[lx.selected] - obs.ens.prior
 denom <-  chol(solve(H[lx.selected,] %*% state.ens$Sx.prior %*% t(H[lx.selected,])+ diag(Szd.assumed[lx.selected]),tol=1e-8))
 resid.z.ens <-  denom %*% resid.ens
-cat("[Ens] stats on normalized measurement forecast residuals\n")
+cat(sprintf("[Ens] stats on normalized measurement forecast residuals:\n"))
 normality.test(resid.z.ens,known.mean=0,known.sd=1)
 
 if(make.pdfs) {
     dev.off()
+    x.pdf.name='common.x.pdf'
+    flux.pdf.name='common.flux.pdf'
+    is.pdf.name='common.obs.pdf'
+} else {
+    x.pdf.name=NULL
+    flux.pdf.name=NULL
+    is.pdf.name=NULL
 }
 
 plot.x.timeseries(ests=list(Truth=list(x=truth_condition),
                             Ensemble=list(x=state.ens$x.post,Sx=state.ens$Sx.post),
-                            Analytical=list(x=state.kf$x.post,Sx=state.kf$Sx.post)))
-#                  pdf.name="common.x.pdf")
+                            Analytical=list(x=state.kf$x.post,Sx=state.kf$Sx.post)),
+                  pdf.name=x.pdf.name)
 
 plot.flux.timeseries(ests=list(Truth=list(x=truth_condition),
                                Ensemble=list(x=state.ens$x.post,Sx=state.ens$Sx.post),
-                               Analytical=list(x=state.kf$x.post,Sx=state.kf$Sx.post)))
-#                  pdf.name="common.flux.pdf")
-
+                               Analytical=list(x=state.kf$x.post,Sx=state.kf$Sx.post)),
+                     pdf.name=flux.pdf.name)
 
 plot.is.timeseries(xs=list(Truth=truth_condition,
                            Ensemble=state.ens$x.post,
@@ -302,6 +305,7 @@ plot.is.timeseries(xs=list(Truth=truth_condition,
                                    "co2_smo_surface-insitu_1_allvalid",
                                    "co2_spo_surface-insitu_1_allvalid",
                                    "co2_lef_tower-insitu_1_allvalid-396magl"),
-                   H=H.orig)
-#                   pdf.name='common.obs.pdf')
+                   H=H.orig,
+                   pdf.name=is.pdf.name)
+
 
