@@ -1,4 +1,4 @@
-# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 08 Jul 2025 (Tue) 14:29:45 MDT>
+# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 09 Jul 2025 (Wed) 11:37:02 MDT>
 
 # Return data frame of the relevant pieces of a set of furnished
 # obspack_id values (x)
@@ -159,11 +159,14 @@ generate_ensemble <- function(x=NA,Sx,nmemb) {
     # deviates, arrange into matrix of nparms, nmemb
     e <- matrix(rnorm(mean=0,sd=1,n=nmemb*nparms),
                 nrow=nparms,ncol=nmemb)
-    
-    if(is.na(x)) {
-        x <- 0
-    } 
-    return(t(x + D %*% e))
+
+    retval <- D %*% e
+    if(all(!is.na(x))) {
+        for(iparm in 1:nparms) {
+             retval[iparm,] <- retval[iparm,] + x[iparm]
+        }
+    }
+    return(t(retval))
 }
 
 simulate_observed <- function(x,H,H_fixed=NULL,Szd=NULL) {
@@ -201,22 +204,36 @@ localization_tval <- function(dx,dy,threshold.prob=0.975) {
     nparms <- dim(dx)[2]
     nobs <- dim(dy)[2]
 
+#    stop()
     rho <- my.Pearsons.corr(t(dx),t(dy))
-    tvals <- abs(rho/sqrt((1-rho^2)/(nmemb-2)))
+    omr2 <- 1-rho^2
+    lx <- which(omr2 < 0)
+    if(length(lx)>0) {
+#        cat(sprintf("Found %d negs, from %g to %g\n",
+#                    length(lx),min(omr2[lx]),max(omr2[lx])))
+#                    
+        #        omr2[lx] <- 0
+        if(min(omr2[lx]) < -1e-12) {
+            stop(sprintf("1-rho^2 is too negative: min is %g",min(omr2[lx])))
+        }
+    }
+    tvals <- abs(rho/sqrt(omr2/(nmemb-2)))
 
     # Threshold Student's t value is 1.97591 for nmemb=150
     tval.thresh <- qt(p=threshold.prob,df=nmemb-1)
     retval <- matrix(1.0,nparms,nobs)
 
     pb <- progress.bar.start(sprintf("localizing %d obs",nobs),nobs)
+    nl <- 0
     for(iobs in 1:nobs) {
         lxpar <- which(tvals[,iobs]<tval.thresh)
         if(length(lxpar)>0) {
             retval[lxpar,iobs] <- 0
+            nl <- nl+length(lxpar)
         }
         pb <- progress.bar.print(pb,iobs)
     }
-    progress.bar.end(pb)
+    progress.bar.end(pb,message=sprintf("%d localized (%.1f%%)",nl,100*nl/(nobs*nparms)))
     return(retval)
 }
 
