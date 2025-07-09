@@ -1,4 +1,4 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 08 Jul 2025 (Tue) 15:06:34 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 09 Jul 2025 (Wed) 15:09:30 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update with a varying number
@@ -108,7 +108,7 @@ n.selected <- length(lx.selected)
 # to run.
 experiments <- NULL
 iexp <- 0
-for (nmembers in unique(sort(c(0,529,seq(1000,10000,by=1000),seq(1500,4500,by=1000),n.selected,20000,50000)))) {
+for (nmembers in unique(sort(c(0,600,seq(1000,10000,by=1000),seq(1500,4500,by=1000),n.selected,20000,50000)))) {
     iexp <- iexp + 1
     experiments <- rbind(experiments,
                          data.frame(nmembers=nmembers,method="ensemble",
@@ -182,13 +182,17 @@ for (iexp in 1:nexperiments) {
 
         dy.prior <- t(simulate_observed(H=H[lx.selected,],
                                         x=t(state$dx.prior)))
-        
+
+        localization_mask <- NULL
+        localization_mask <- localization_tval(dx=state$dx.prior,
+                                               dy=dy.prior,
+                                               threshold.prob=0.1)
         post <- enkf_meas_update_loc(x=state$x.prior,
                                      dx=state$dx.prior,
                                      obs=these.obs,
                                      Szd=these.Szd,
                                      y=y.prior,dy=dy.prior,
-                                     localization_mask=NULL)
+                                     localization_mask=localization_mask)
 
         state$x.post <- post$x
         state$dx.post <- post$dx

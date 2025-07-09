@@ -1,4 +1,4 @@
-# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 09 Jul 2025 (Wed) 11:37:02 MDT>
+# Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/tools/enkf.r - 09 Jul 2025 (Wed) 13:30:19 MDT>
 
 # Return data frame of the relevant pieces of a set of furnished
 # obspack_id values (x)
@@ -212,10 +212,10 @@ localization_tval <- function(dx,dy,threshold.prob=0.975) {
 #        cat(sprintf("Found %d negs, from %g to %g\n",
 #                    length(lx),min(omr2[lx]),max(omr2[lx])))
 #                    
-        #        omr2[lx] <- 0
         if(min(omr2[lx]) < -1e-12) {
             stop(sprintf("1-rho^2 is too negative: min is %g",min(omr2[lx])))
         }
+        omr2[lx] <- 0
     }
     tvals <- abs(rho/sqrt(omr2/(nmemb-2)))
 
