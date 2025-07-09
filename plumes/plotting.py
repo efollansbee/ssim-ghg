@@ -1,7 +1,6 @@
 import numpy as np
 import sys,pdb
 from scipy.special import erfcinv as erfcinv
-from calc_sigmas import calc_sigmas 
 import matplotlib.pyplot as plt
 
 def mole_fraction_plot(mole_fraction=None,x=None,y=None,x_slices=[0],title='CH4',plot_lims=[2,3],cmap=plt.cm.hot_r,xlabel='Downwind Direction (km)',ylabel='Crosswind Direction (km)'):

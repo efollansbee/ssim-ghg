@@ -1,7 +1,6 @@
 import numpy as np
 import sys,pdb
 from scipy.special import erfcinv as erfcinv
-from calc_sigmas import calc_sigmas 
 
 def gauss_func(Q,u,x,y,z,xs,ys,H,Dy,Dz):
    x_c=x-xs; # shift the coordinates so that stack is centre point
