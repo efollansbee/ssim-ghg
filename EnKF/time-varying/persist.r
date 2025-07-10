@@ -1,4 +1,5 @@
-# Time-stamp: <hercules-login-4.hpc.msstate.edu:/work/noaa/co2/andy/Projects/enkf_summer_school/repo/ssim-ghg-2024/EnKF/time-varying/persist.r: 13 Jun 2024 (Thu) 19:36:56 UTC>
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/time-varying/persist.r - 10 Jul 2025 (Thu) 11:57:54 MDT>"
+cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update to a truth condition
 # generated from scaling factors derived from OCO-2 v10 MIP models.
@@ -9,7 +10,10 @@ source("../tools/progress.bar.r")
 source("../tools/find.indir.r")
 source("../tools/time.r")
 source("../tools/load.ncdf4.r")
-options(warn=2) # error out on warnings (probably they are mistakes)
+
+# Cannot do this warn=2 setting, since the template yaml file
+# has a syntax issue.
+#options(warn=2) # error out on warnings (probably they are mistakes)
 indir <- find.indir()
 
 library(txtplot)
@@ -19,7 +23,7 @@ library(txtplot)
 if(!exists("H.orig")) {
   t0 <- proc.time()[3]
   cat("Loading Jacobians...")
-  load(file.path(indir,"inversion_examples/jacobians/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda"))
+  load(file.path(indir,"jacobians/trunc_full_jacob_030624_with_dimnames_sib4_4x5_mask.rda"))
   H <- jacob*(12/44) # Andrew reports units conversion needed
   rm(jacob)
   # We'll be subsetting H later; preserve the original matrix for
@@ -31,7 +35,7 @@ if(!exists("H.orig")) {
 if(!exists("obs_catalog")) {
   t0 <- proc.time()[3]
   cat("Loading obs_catalog...")
-  load(file.path(indir,"inversion_examples/obs/obs_catalog_042424_unit_pulse_hour_timestamp_witherrors_withdates.rda"))
+  load(file.path(indir,"obs/obs_catalog_042424_unit_pulse_hour_timestamp_witherrors_withdates.rda"))
   # change time zone to "UTC" for obs_catalog times (is by default
   # "GMT")
   attributes(obs_catalog$DATE)$tzone <- "UTC"
@@ -42,7 +46,7 @@ nreg <- 22
 nlag <- 3 # months
 nparms <- nreg*nlag
 nmons <- 24
-nmemb <- 1000
+nmemb <- 100
 # probability (0-1) that obs will be randomly selected for
 # assimilation
 obs.prob <- 0.05
@@ -53,7 +57,7 @@ parm.indices <- function(imon) {
   return((0:21)*24 + imon)
 }
 
-load(file.path(indir,"inversion_examples/misc/truth_array.rda"))
+load(file.path(indir,"misc/truth_array.rda"))
 
 # Andrew uses a tm() function to limit the range of values in an
 # array. This function does the same but is very explicit. Note that
@@ -274,6 +278,8 @@ for(imon in 1:nmons) {
   state.enkf$Sx.prior[lx,lx] <- cov(state.enkf$dx.prior[,seq(1,by=3,length.out=22),imon])
 }
 
+rm(H.orig,obs_catalog)
+
 posterior.dofs <- TRUE
 
 if(posterior.dofs) {
@@ -287,6 +293,7 @@ ndofs.enkf <- min(ndofs.enkf,nmemb)
 
 state.enkf$x.post.finals <- t(state.enkf$x.post[seq(1,length.out=22,by=3),1:nmons])
 dim(state.enkf$x.post.finals) <- c(nmons*nreg,1)
+
 
 # This is where we finally use lx.selected.all, to make posterior
 # simulated values for the measurements we assimilated.
@@ -304,7 +311,14 @@ x.prior <- matrix(1,nrow=nreg*nmons,ncol=1)
 chi2.state.enkf <- (1/ndofs.enkf) * t(state.enkf$x.post.finals - truth_condition) %*% solve(state.enkf$Sx) %*% (state.enkf$x.post.finals - truth_condition)
 chi2.prior.enkf <- (1/(ndofs.enkf)) * t(state.enkf$x.post.finals - x.prior) %*% solve(state.enkf$Sx.prior) %*% (state.enkf$x.post.finals - x.prior)
 
-chi2.obs.enkf <- (1/(nobs-(nreg*nmons))) * t(obs[lx.selected.all] - obs.enkf.post) %*% diag(1/Szd.assumed[lx.selected.all]) %*% (obs[lx.selected.all] - obs.enkf.post)
+# The commented-out linear algebra method for chi2.obs.enkf is
+# correct, but uses a lot of memory as it needs to store and then
+# invert a large diagonal matrix. This is not needed since that matrix
+# is indeed diagonal; we can just use 1/(the diagonal) instead.
+#
+#chi2.obs.enkf <- (1/length(lx.selected.all)) * t(obs[lx.selected.all] - obs.enkf.post)%*% diag(1/Szd.assumed[lx.selected.all]) %*% (obs[lx.selected.all] - obs.enkf.post)
+resid.enkf.n <- (obs[lx.selected.all] - obs.enkf.post)/sqrt(Szd.assumed[lx.selected.all])  # normalized posterior residuals
+chi2.obs.enkf <-  mean(resid.enkf.n^2)
 
 cat(sprintf(" [EnKF] chi2 means: state %.2f, prior %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members)\n",
             chi2.state.enkf,chi2.prior.enkf,chi2.obs.enkf,ndofs.enkf,ndofs.patil(state.enkf$Sx),compute.rmse(state.enkf$x.post.finals - truth_condition),nmemb))
@@ -327,7 +341,7 @@ plot.is.timeseries(xs=list(Truth=truth_condition,
                                    "co2_smo_surface-insitu_1_allvalid",
                                    "co2_spo_surface-insitu_1_allvalid",
                                    "co2_lef_tower-insitu_1_allvalid-396magl"),
-                   H=H.orig,
+                   H=H, # was H.orig
                    pdf.name='persist.obs.pdf')
 
 #save(file="persist.rda", state.enkf,enkf.x.working,dx.working)
