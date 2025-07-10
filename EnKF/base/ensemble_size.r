@@ -1,11 +1,16 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 07 Jul 2025 (Mon) 12:48:58 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 09 Jul 2025 (Wed) 15:09:30 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update with a varying number
-# of ensemble members.
+# of ensemble members, plus an anakytical KF result for
+# comparison. Results are stored in a data frame "experiments". The
+# rows are experimental conditions, the (named) columns are input or
+# output quantities.
 
 # Add local library for R packages
 .libPaths(new=c(sprintf("%s/shared/lib/R-4.3/x86_64-pc-linux-gnu",Sys.getenv("HOME")),.libPaths())) 
+
+make.pdfs <- TRUE # not for notebooks, but for CLI
 
 source("../tools/enkf.r")
 source("../tools/progress.bar.r")
@@ -38,8 +43,6 @@ if(!exists("obs_catalog")) {
     attributes(obs_catalog$DATE)$tzone <- "UTC"
     cat(sprintf('%.1fs\n',proc.time()[3]-t0))
 }
-
-
 
 nreg <- 22
 nmons <- 24
@@ -101,154 +104,160 @@ time.edges <- seq(ISOdatetime(2014,9,1,0,0,0,tz="UTC"),
 lx.selected <- which(runif(n=nobs)<=obs.prob)
 n.selected <- length(lx.selected)
 
+# Set up a data frame with all the experimental conditions we're going
+# to run.
+experiments <- NULL
+iexp <- 0
+for (nmembers in unique(sort(c(0,600,seq(1000,10000,by=1000),seq(1500,4500,by=1000),n.selected,20000,50000)))) {
+    iexp <- iexp + 1
+    experiments <- rbind(experiments,
+                         data.frame(nmembers=nmembers,method="ensemble",
+                                    chi2.obs=NA,chi2.state=NA,
+                                    RMSE=NA,ndofs.patil=NA,
+                                    elapsed.time=NA))
+    if(nmembers==0) {
+        experiments$method[iexp] <- "KF"
+    }
+}
+
+nexperiments <- dim(experiments)[1]
+
 pctage <- 100*n.selected/nobs
 cat(sprintf("%d obs selected out of %d available (%.1f%%)\n",
             n.selected,nobs,pctage))
 
 posterior.dofs <- FALSE
 
-if(posterior.dofs) {
-  ndofs.kf <- ndofs.patil(state.kf$Sx.post)
-} else {
-  ndofs.kf <- nmons*nreg
-}
-
-# assimilate
 these.obs <- obs[lx.selected]
 these.Szd <- Szd.assumed[lx.selected]
-
-
-
-# Perform the analytical KF inversion as a baseline
-state.kf <- list()
-state.kf$x.prior <- matrix(1,nrow=nparms,ncol=1)
-state.kf$x.post <- matrix(NA,nrow=nparms,ncol=1)
-
-# We need a state vector and an ensemble with the total number of
-# parameters, 22x24, to multiply the Jacobian H. 
-t0 <- proc.time()[3]
-y.prior <- simulate_observed(H=H[lx.selected,],
-                             x=state.kf$x.prior)
-cat(sprintf('y.prior computed: %.1fs\n',proc.time()[3]-t0))
 
 # diag() can form a diagonal matrix from a vector, or extract the
 # diagonal of a matrix. Behavior depends on its argument.
-Sx.prior <- diag(1.3,nparms) 
-state.kf$x.prior[,1] <- 1
-state.kf$Sx.prior <- Sx.prior
+x.prior <- matrix(1,nrow=nparms,ncol=1)
+#Sx.prior <- diag(5,nparms) 
+Sx.prior <- diag(1.4,nparms) 
+
+
+# We need a state vector and an ensemble with the total number of
+# parameters, 22x24, to multiply the Jacobian H. 
+#t0 <- proc.time()[3]
+y.prior <- simulate_observed(H=H[lx.selected,],
+                             x=x.prior)
+#cat(sprintf('y.prior computed: %.1fs\n',proc.time()[3]-t0))
+
+
 
 these.obs <- obs[lx.selected]
 these.Szd <- Szd.assumed[lx.selected]
 
-t0 <- proc.time()[3]
-post <- kf_meas_update(x=state.kf$x.prior,
-                       Sx=state.kf$Sx.prior,
-                       H=H[lx.selected,],
-                       z=these.obs,
-                       Sz=diag(these.Szd))
 
-cat(sprintf('KF update: %.1fs\n',proc.time()[3]-t0))
+for (iexp in 1:nexperiments) {
 
-state.kf$x.post <- post$x
-state.kf$Sx.post <- post$Sx
-y.kf.post <- simulate_observed(x=state.kf$x.post,H=H[lx.selected,])
-y.kf.prior <- y.prior
-
-
-chi2.state.kf <- (1/ndofs.kf) * t(state.kf$x.post - truth_condition) %*% solve(state.kf$Sx.post) %*% (state.kf$x.post - truth_condition)
-chi2.prior.kf <- (1/ndofs.kf) * t(state.kf$x.prior - truth_condition) %*% solve(state.kf$Sx.prior) %*% (state.kf$x.prior - truth_condition)
-chi2.innov.kf <- (1/ndofs.kf) * t(state.kf$x.post - state.kf$x.prior) %*% solve(state.kf$Sx.prior) %*% (state.kf$x.post - state.kf$x.prior)
-
-chi2.obs.kf <- (1/n.selected) * t(obs[lx.selected] - y.kf.prior) %*% solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.kf.prior)
-
-cat(sprintf(" [KF] chi2 means: state %.2f, prior %.2f, innov %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f\n",
-            chi2.state.kf,chi2.prior.kf,chi2.innov.kf,chi2.obs.kf,ndofs.kf,ndofs.patil(state.kf$Sx.post),compute.rmse(state.kf$x.post - truth_condition)))
-
-
-for (nmemb in c(seq(1000,10000,by=1000),20000,100000)) {
+    nmembers <- experiments$nmembers[iexp]
+    method <- experiments$method[iexp]
     
-    state.ens <- list()
-    state.ens$x.prior <- matrix(1,nrow=nparms,ncol=1)
-    state.ens$dx.prior <- matrix(NA,nrow=nmemb,ncol=nparms)
-    state.ens$x.post <- matrix(NA,nrow=nparms,ncol=1)
-    state.ens$dx.post <- matrix(NA,nrow=nmemb,ncol=nparms)
-
-    state.ens$x.prior[,1] <- 1
-    state.ens$dx.prior <- generate_ensemble(Sx=Sx.prior,nmemb=nmemb) # prior deviations
+    state <- list()
+    state$x.prior <- x.prior
+    state$Sx.prior <- Sx.prior
+    # Next lines are just allocating space
+    state$x.post <- matrix(NA,nrow=nparms,ncol=1)
+    state$Sx.post <- matrix(NA,nrow=nparms,ncol=nparms)
 
     
+    t0 <- proc.time()[3]
+    if(nmembers==0) { # special value to signify KF solution
 
-#    t0 <- proc.time()[3]
-#    y.prior <- simulate_observed(H=H[lx.selected,],
-#                                 x=state.ens$x.prior)
-    y.ens.prior <- y.prior
-    dy.prior <- t(simulate_observed(H=H[lx.selected,],
-                                    x=t(state.ens$dx.prior)))
-#    cat(sprintf('y,dy.prior for %d members computed: %.1fs\n',nmemb,proc.time()[3]-t0))
+        post <- kf_meas_update(x=state$x.prior,
+                               Sx=state$Sx.prior,
+                               H=H[lx.selected,],
+                               z=these.obs,
+                               Sz=diag(these.Szd))
+        state$x.post <- post$x
+        state$Sx.post <- post$Sx
 
-    
-#    t0 <- proc.time()[3]
-    post <- enkf_meas_update_loc(x=state.ens$x.prior,
-                                 dx=state.ens$dx.prior,
-                                 obs=these.obs,
-                                 Szd=these.Szd,
-                                 y=y.prior,dy=dy.prior,
-                                 localization_mask=NULL)
-    
-#    cat(sprintf('EnKF computed: %.1fs\n',proc.time()[3]-t0))
-
-    state.ens$x.post <- post$x
-    state.ens$dx.post <- post$dx
-
-    # Compute sample covariance matrices (528x528)
-    state.ens$Sx.post <- matrix(0,nrow=nmons*nreg,ncol=nmons*nreg)
-    state.ens$Sx.prior <- matrix(0,nrow=nmons*nreg,ncol=nmons*nreg)
-    state.ens$Sx.post <- cov(state.ens$dx.post)  
-    state.ens$Sx.prior <- cov(state.ens$dx.prior)
-
-
-
-    if(posterior.dofs) {
-        ndofs.ens <- ndofs.patil(state.ens$Sx)
     } else {
-        ndofs.ens <- nmons*nreg
-    }
+        
+        state$dx.prior <- generate_ensemble(Sx=state$Sx.prior,nmemb=nmembers) # prior deviations
+        state$dx.post <- matrix(NA,nrow=nmembers,ncol=nparms)
 
+        dy.prior <- t(simulate_observed(H=H[lx.selected,],
+                                        x=t(state$dx.prior)))
+
+        localization_mask <- NULL
+        localization_mask <- localization_tval(dx=state$dx.prior,
+                                               dy=dy.prior,
+                                               threshold.prob=0.1)
+        post <- enkf_meas_update_loc(x=state$x.prior,
+                                     dx=state$dx.prior,
+                                     obs=these.obs,
+                                     Szd=these.Szd,
+                                     y=y.prior,dy=dy.prior,
+                                     localization_mask=localization_mask)
+
+        state$x.post <- post$x
+        state$dx.post <- post$dx
+        # Compute an estimate of Sx.post from posterior ensemble deviations
+        state$Sx.post <- cov(state$dx.post)  
+        
+    }
+    dt <- proc.time()[3]-t0
+
+    ndofs <- ndofs.patil(state$Sx.post)
     # Except we can't have any more DOFs than ensemble members
-    ndofs.ens <- min(ndofs.ens,nmemb)
-
-    chi2.state.ens <- (1/ndofs.ens) * t(state.ens$x.post - truth_condition) %*% solve(state.ens$Sx.post) %*% (state.ens$x.post - truth_condition)
-    chi2.prior.ens <- (1/ndofs.ens) * t(state.ens$x.prior - truth_condition) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.prior - truth_condition)
-    chi2.innov.ens <- (1/ndofs.ens) * t(state.ens$x.post - state.ens$x.prior) %*% solve(state.ens$Sx.prior) %*% (state.ens$x.post - state.ens$x.prior)
-    
-    chi2.obs.ens <- (1/n.selected) * t(obs[lx.selected] - y.ens.prior) %*% solve(H[lx.selected,] %*% state.ens$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.ens.prior)
-    
-    cat(sprintf("[Ens] chi2 means: state %.2f, prior %.2f, innov %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members)\n",
-                chi2.state.ens,chi2.prior.ens,chi2.innov.ens,chi2.obs.ens,ndofs.ens,ndofs.patil(state.ens$Sx.post),compute.rmse(state.ens$x.post - truth_condition),nmemb))
-    
-    if(FALSE) {
-        plot.x.timeseries(ests=list(Truth=list(x=truth_condition),
-                                    Ensemble=list(x=state.ens$x.post,Sx=state.ens$Sx),
-                                    Analytical=list(x=state.kf$x.post,Sx=state.kf$Sx)))
-        #                  pdf.name="common.x.pdf")
-
-        plot.flux.timeseries(ests=list(Truth=list(x=truth_condition),
-                                       Ensemble=list(x=state.ens$x.post,Sx=state.ens$Sx),
-                                       Analytical=list(x=state.kf$x.post,Sx=state.kf$Sx)))
-        #                  pdf.name="common.flux.pdf")
-
-
-        plot.is.timeseries(xs=list(Truth=truth_condition,
-                                   Ensemble=state.ens$x.post,
-                                   Analytical=state.kf$x.post,
-                                   Prior=x.prior),
-                           dataset_names=c("co2_mlo_surface-insitu_1_allvalid",
-                                           "co2_brw_surface-insitu_1_allvalid",
-                                           "co2_smo_surface-insitu_1_allvalid",
-                                           "co2_spo_surface-insitu_1_allvalid",
-                                           "co2_lef_tower-insitu_1_allvalid-396magl"),
-                           H=H.orig)
-        #                   pdf.name='common.obs.pdf')
+    if(nmembers>0) { # special value to signify KF solution
+        ndofs <- min(ndofs,nmembers)
     }
+
+    # Notice the 1/nparms below. This is assuming that the no. DOFs is
+    # nparms.
+    chi2.state <- (1/nparms) * t(state$x.post - truth_condition) %*% solve(state$Sx.post) %*% (state$x.post - truth_condition)
+    chi2.obs <- (1/n.selected) * t(obs[lx.selected] - y.prior) %*% solve(H[lx.selected,] %*% state$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.prior)
+
+    rmse <- compute.rmse(state$x.post - truth_condition)
+    cat(sprintf("[%s] chi2 means: state %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members) in %.1fs\n",
+                method,chi2.state,chi2.obs,nparms,ndofs,rmse,nmembers,dt))
+
+    experiments$chi2.state[iexp] <- chi2.state
+    experiments$chi2.obs[iexp] <- chi2.obs
+    experiments$chi2.obs[iexp] <- chi2.obs
+    experiments$RMSE[iexp] <- rmse
+    experiments$ndofs.patil[iexp] <- ndofs
+    experiments$elapsed.time[iexp] <- dt
 }
 
+if(make.pdfs) {
+    pdf("ensemble_size.pdf",width=10,height=3)
+    layout(matrix(1:3,nrow=1))
+    par(las=1,bg='white')
+}
+
+plot(experiments$nmembers[3:nexperiments],experiments$chi2.state[3:nexperiments],log='xy',
+     main=expression(paste(text=chi[state]^2)),
+     las=1,ylab='',xlab='ensemble size',bg='skyblue',pch=21)
+abline(h=experiments$chi2.state[1],col='red')
+abline(h=1.0)
+legend(x='topleft',legend=c('ensemble','KF','target'),
+       lty=c(NA,1,1),pch=c(21,NA,NA),pt.bg='skyblue',
+       bty='n',
+       col=c('black','red','black'))
+       
+plot(experiments$nmembers[3:nexperiments],experiments$RMSE[3:nexperiments],log='xy',main="RMSE",las=1,ylab='',xlab='ensemble size',bg='skyblue',pch=21)
+abline(h=experiments$RMSE[1],col='red')
+legend(x='topleft',legend=c('ensemble','KF'),
+       lty=c(NA,1),pch=c(21,NA),pt.bg='skyblue',bty='n',
+       col=c('black','red'))
+       
+
+plot(experiments$nmembers[3:nexperiments],experiments$chi2.obs[3:nexperiments],log='xy',
+     main=expression(paste(text=chi[forecast]^2)),
+     las=1,ylab='',xlab='ensemble size',bg='skyblue',pch=21)
+abline(h=experiments$chi2.obs[1],col='red')
+abline(h=1.0)
+legend(x='topleft',legend=c('ensemble','KF','target'),
+       lty=c(NA,1,1),pch=c(21,NA,NA),pt.bg='skyblue',bty='n',
+       col=c('black','red','black'))
+       
+
+if(make.pdfs) {
+    dev.off()
+}

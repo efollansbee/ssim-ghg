@@ -7,15 +7,14 @@ plotting:
 global_paths:
   # input_folder should point to a directory that has the folders obs, jacobians, transcom, etc
   # spaces in the folder name are OK, but there *must* be a space after the colon, e.g.,
-  # input_folder: /mydrive/my name/data
-  input_folder:
+  input_folder: /tmp/ssim-ghg-data
   # where you want the output to go, create this if you don't have it
   # same rules apply as input_folder, e.g., the following is OK
-  # output_folder: /mydrive/another drive/my name/output
+  # output_folder: /home/jovyan/ssim-outputs
   output_folder:
 retrieval:
   # the path of absco.h5 relative to input_folder
-  absco_table: absco/absco.h5
+  absco_table: /tmp/ssim-ghg-data/absco/absco.h5
 observations:
   obspack_folder: observation_example_datasets/obspack_co2_1_GLOBALVIEWplus_v9.1_2023-12-08/data/nc
   obspack_surface_code: co2_lef_tower-insitu_1_allvalid
@@ -24,3 +23,24 @@ observations:
   tccon_folder: tccon
   tccon_site: pa
   ameriflux_file: observation_example_datasets/AMF_US-PFa_BASE-BADM_28-5/AMF_US-PFa_BASE_HR_28-5.csv
+plumes:
+  # grid information
+  horizontal_resolution: 25
+  vertical_resolution: 5
+  ztop: 200
+  # source information
+  source_x: 0
+  source_y: 0
+  source_z: 0
+  source_rate: 1000
+  # met information
+  wind_speed: 5
+  Dy: 100
+  Dz: 2
+  T: 288
+  surface_pressure: 100000
+  # background
+  mf_bckgd: 1.85
+  # noise parameters
+  in_situ_noise: 0.05
+  col_avg_noise: 5
