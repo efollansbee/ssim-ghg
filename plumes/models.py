@@ -2,6 +2,9 @@ import numpy as np
 import sys,pdb
 from scipy.special import erfcinv as erfcinv
 
+def gaus_pdf(x,mu=0,sig=1):
+    return np.exp(-(x-mu)**2/sig**2/2)/sig/np.sqrt(2*np.pi)
+
 def gauss_func_point(emis_rate=0.,u=0.,x=0.,y=0.,z=0.,xs=0.,ys=0.,H=0.,Dy=1.,Dz=1.):
     x_c=x-xs; # shift the coordinates so that stack is centre point
     y_c=y-ys; 
