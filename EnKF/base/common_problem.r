@@ -1,4 +1,4 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/common_problem.r - 08 Jul 2025 (Tue) 14:17:50 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/common_problem.r - 09 Jul 2025 (Wed) 16:48:38 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update to a truth condition
@@ -264,16 +264,16 @@ if(make.pdfs) {
 }
 
 
-denom <-  chol(solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,])+ diag(Szd.assumed[lx.selected]),tol=1e-8))
-resid.z.kf <-  denom %*% resid.kf
-cat(sprintf("[KF] stats on normalized measurement forecast residuals:\n"))
-normality.test(resid.z.kf,known.mean=0,known.sd=1)
-
 resid.ens <- obs[lx.selected] - obs.ens.prior
 denom <-  chol(solve(H[lx.selected,] %*% state.ens$Sx.prior %*% t(H[lx.selected,])+ diag(Szd.assumed[lx.selected]),tol=1e-8))
 resid.z.ens <-  denom %*% resid.ens
-cat(sprintf("[Ens] stats on normalized measurement forecast residuals:\n"))
+cat(sprintf("\n\n[Ens] stats on normalized measurement forecast residuals:\n"))
 normality.test(resid.z.ens,known.mean=0,known.sd=1)
+
+denom <-  chol(solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,])+ diag(Szd.assumed[lx.selected]),tol=1e-8))
+resid.z.kf <-  denom %*% resid.kf
+cat(sprintf("\n\n[KF] stats on normalized measurement forecast residuals:\n"))
+normality.test(resid.z.kf,known.mean=0,known.sd=1)
 
 if(make.pdfs) {
     dev.off()
