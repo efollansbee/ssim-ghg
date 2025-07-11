@@ -531,6 +531,7 @@ class Retrieval:
         else:
             print("Unexpected state vector setup!")
 
+        print(" ")
         print("Total retrieval time =",'{:.2f}'.format(time.time()-time_total),"s")
 
 
