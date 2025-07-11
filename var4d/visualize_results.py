@@ -324,7 +324,12 @@ class Visualize_Fluxes(Visualize):
 
         for region, data in result_dict.items():
             if read_errors:
-                print_line = region.ljust(max_region_length) + '%15.2f'%data['truth'] + '%9.2f ± %4.2f'%(data['prior'],data['prior_err']) + '%9.2f ± %4.2f'%(data['poste'],data['poste_err'])
+                # color code according to difference with truth, color in red if it's 3 sigma away from truth
+                if abs(data['truth']-data['poste']) > 5.0*data['poste_err']:
+                    RED = '\033[91m' ; RESET = '\033[0m'
+                    print_line = RED + region.ljust(max_region_length) + '%15.2f'%data['truth'] + '%9.2f ± %4.2f'%(data['prior'],data['prior_err']) + '%9.2f ± %4.2f'%(data['poste'],data['poste_err']) + RESET
+                else:
+                    print_line = region.ljust(max_region_length) + '%15.2f'%data['truth'] + '%9.2f ± %4.2f'%(data['prior'],data['prior_err']) + '%9.2f ± %4.2f'%(data['poste'],data['poste_err'])
             else:
                 print_line = region.ljust(max_region_length) + '%15.2f'%data['truth'] + '%16.2f'%data['prior'] + '%16.2f'%data['poste']
             print_lines.append(print_line)
