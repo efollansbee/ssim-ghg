@@ -7,12 +7,15 @@ import numpy as np
 from collections.abc import Iterable
 from matplotlib.ticker import MaxNLocator
 from tqdm.auto import tqdm
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 class Visualize(Paths):
 
     def __init__(self, project):
         super(Visualize, self).__init__()
-        self.output_dir = os.path.join(self.output_root, project)
+        if project is not None:
+            self.output_dir = os.path.join(self.output_root, project)
         self.project = project
         self.plot_styles = {
             'obs': {'c': 'xkcd:black', 'mec': 'xkcd:black', 'mfc': 'xkcd:grey', 'marker': 'o', 'ms': 5, 'mew': 0.5},
@@ -271,6 +274,66 @@ class Visualize_Fluxes(Visualize):
 
     def __init__(self, project):
         super(Visualize_Fluxes, self).__init__(project)
+    
+    def plot_on_map(self, arr_2d, lat_edges, lon_edges, **kwargs):
+        lon_center = 0.5*(lon_edges[0] + lon_edges[-1])
+        spherical_globe = ccrs.Globe(ellipse=None, semimajor_axis=6371000., semiminor_axis=6371000.)
+        map_proj = ccrs.Robinson(globe=spherical_globe, central_longitude=lon_center)
+        data_proj = ccrs.PlateCarree(central_longitude=lon_center)
+
+        aspect = (map_proj.x_limits[1]-map_proj.x_limits[0])/(map_proj.y_limits[1]-map_proj.y_limits[0])
+        height = kwargs['height'] if 'height' in kwargs else 5.0
+        width = aspect * height
+        title_space = kwargs['title_space'] if 'title_space' in kwargs else True # keep separate space for title?
+        vpad = 0.3 if title_space else 0.1
+        cbar_pad = 0.5
+        hpad = 0.1
+        figwidth = width
+        figheight = height + vpad + cbar_pad
+        fig = plt.figure(figsize=(figwidth, figheight))
+
+        ax = plt.axes([0.0, (vpad+cbar_pad)/figheight, width/figwidth, height/figheight], projection=map_proj)
+        if 'background' in kwargs:
+            bg_res = kwargs['bg_res'] if 'bg_res' in kwargs else 'med'
+            ax.background_img(kwargs['background'], resolution=bg_res)
+            coast_width = 0.3
+        else:
+            ax.add_feature(cfeature.LAKES.with_scale('50m'), linewidth=0.5, edgecolor='k', facecolor='none')
+            coast_width = 0.5
+
+        if 'states' in kwargs and kwargs['states']:
+            ax.add_feature(cfeature.STATES.with_scale('10m'), linewidth=coast_width*0.25, edgecolor='0.5')
+        if 'countries' in kwargs and kwargs['countries']:
+            ax.add_feature(cfeature.BORDERS.with_scale('50m'), linewidth=0.5*coast_width, edgecolor='0.25')
+        ax.add_feature(cfeature.COASTLINE.with_scale('50m'), linewidth=coast_width, edgecolor='k')
+
+        ax.gridlines(xlocs=np.arange(-180.,181.,30.), ylocs=np.arange(-90.,91.,30.), linewidth=0.5, linestyle=(0,(5,2)), color='0.25')
+        cax = plt.axes([0.05*width/figwidth, 0.6*cbar_pad/figheight, 0.9*width/figwidth, 0.4*cbar_pad/figheight])
+        x = 0.5*width/figwidth
+        y = (cbar_pad+0.5*vpad)/figheight
+        title_pos = (x,y)
+
+        vmin = kwargs['vmin'] if 'vmin' in kwargs else np.percentile(arr_2d,  0.5)
+        vmax = kwargs['vmax'] if 'vmax' in kwargs else np.percentile(arr_2d, 99.5)
+
+        if np.isclose(vmin, 0.0):
+            vmin = 0.0
+        if np.isclose(vmax, 0.0):
+            vmax = 0.0
+
+        if vmin*vmax < 0.0:
+            my_cmap = plt.cm.bwr
+        elif vmax <= 0.0:
+            my_cmap = plt.cm.YlOrRd_r
+        else:
+            my_cmap = plt.cm.YlOrRd
+
+        img = ax.pcolormesh(lon_edges, lat_edges, arr_2d, transform=data_proj, cmap=my_cmap, vmin=vmin, vmax=vmax, shading='flat')
+        cbar = plt.colorbar(mappable=img, cax=cax, orientation='horizontal')
+        plt.setp(cax.get_xticklabels(), **self.tick_font_property)
+
+        if 'title' in kwargs:
+            fig.text(title_pos[0], title_pos[1], kwargs['title'], ha='center', va='center', **self.label_font_property)
 
     def print_annual_totals(self):
         result_dict = {}
