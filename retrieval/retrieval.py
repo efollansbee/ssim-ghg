@@ -504,24 +504,29 @@ class Retrieval:
                 continue
 
         print("-----------------------------------------------------------------------------------------------------------------------")
-        print("Final reduced chisq = ",self.chisq_reduced)
+        print("Final reduced chisq =",'{:.4f}'.(self.chisq_reduced))
         if "CO2 Profile Scale Factor" in x["names"] and "CH4 Profile Scale Factor" in x["names"]:
             xco2_ret_temp = calculate_Xgas(model_prior.co2*x["ret"][0], model_prior.p*x["ret"][3], model_prior.q*x["ret"][4])[0] * 1e6
             xch4_ret_temp = calculate_Xgas(model_prior.ch4*x["ret"][1], model_prior.p*x["ret"][3], model_prior.q*x["ret"][4])[0] * 1e9
-            print("Final retrieved XCO2 =".ljust(23),'{:.5f}'.format(xco2_ret_temp).rjust(10),"+/-",'{:.5f}'.format(xco2_ret_temp*np.diagonal(self.S)[0]**0.5),"ppm")
-            print("Final XCO2 error (retrieved - true) =".ljust(37),'{:.5f}'.format(xco2_ret_temp - model_true.xco2).rjust(8),"ppm")
-            print("Final retrieved XCH4 =".ljust(23),'{:.5f}'.format(xch4_ret_temp).rjust(10),"+/-",'{:.5f}'.format(xch4_ret_temp*np.diagonal(self.S)[1]**0.5),"ppb")
-            print("Final XCH4 error (retrieved - true) =".ljust(37),'{:.5f}'.format(xch4_ret_temp - model_true.xch4).rjust(8),"ppb")
+            print("Final retrieved XCO2 =",'{:.2f}'.format(xco2_ret_temp),"ppm")
+            print("Posterior XCO2 uncertainty =",'{:.2f}'.format(xco2_ret_temp*np.diagonal(self.S)[0]**0.2),"ppm")
+            print("Final XCO2 error (retrieved - true) =",'{:.2f}'.format(xco2_ret_temp - model_true.xco2),"ppm")
+            print(" ")
+            print("Final retrieved XCH4 =",'{:.2f}'.format(xch4_ret_temp),"ppb")
+            print("Posterior XCH4 uncertainty =",'{:.2f}'.format(xch4_ret_temp*np.diagonal(self.S)[1]**0.2),"ppb")
+            print("Final XCH4 error (retrieved - true) =",'{:.2f}'.format(xch4_ret_temp - model_true.xch4),"ppb")
 
         elif "CO2 Profile Scale Factor" in x["names"] and "CH4 Profile Scale Factor" not in x["names"]:
             xco2_ret_temp = calculate_Xgas(model_prior.co2*x["ret"][0], model_prior.p*x["ret"][2], model_prior.q*x["ret"][3])[0] * 1e6
-            print("Final retrieved XCO2 =".ljust(23),'{:.5f}'.format(xco2_ret_temp).rjust(10),"+/-",'{:.5f}'.format(xco2_ret_temp*np.diagonal(self.S)[0]**0.5),"ppm")
-            print("Final XCO2 error (retrieved - true) =".ljust(37),'{:.5f}'.format(xco2_ret_temp - model_true.xco2).rjust(8),"ppm")
+            print("Final retrieved XCO2 =",'{:.2f}'.format(xco2_ret_temp),"ppm")
+            print("Posterior XCO2 uncertainty =",'{:.2f}'.format(xco2_ret_temp*np.diagonal(self.S)[0]**0.2),"ppm")
+            print("Final XCO2 error (retrieved - true) =",'{:.2f}'.format(xco2_ret_temp - model_true.xco2),"ppm")
 
         elif "CO2 Profile Scale Factor" not in x["names"] and "CH4 Profile Scale Factor" in x["names"]:
             xch4_ret_temp = calculate_Xgas(model_prior.ch4*x["ret"][0], model_prior.p*x["ret"][2], model_prior.q*x["ret"][3])[0] * 1e9
-            print("Final retrieved XCH4 =".ljust(23),'{:.5f}'.format(xch4_ret_temp).rjust(10),"+/-",'{:.5f}'.format(xch4_ret_temp*np.diagonal(self.S)[0]**0.5),"ppb")
-            print("Final XCH4 error (retrieved - true) =".ljust(37),'{:.5f}'.format(xch4_ret_temp - model_true.xch4).rjust(8),"ppb")
+            print("Final retrieved XCH4 =",'{:.2f}'.format(xch4_ret_temp),"ppb")
+            print("Posterior XCH4 uncertainty =",'{:.2f}'.format(xch4_ret_temp*np.diagonal(self.S)[0]**0.2),"ppb")
+            print("Final XCH4 error (retrieved - true) =",'{:.2f}'.format(xch4_ret_temp - model_true.xch4),"ppb")
 
         else:
             print("Unexpected state vector setup!")
