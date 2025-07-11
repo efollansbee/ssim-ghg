@@ -504,7 +504,7 @@ class Retrieval:
                 continue
 
         print("-----------------------------------------------------------------------------------------------------------------------")
-        print("Final reduced chisq =",'{:.4f}'.(self.chisq_reduced))
+        print("Final reduced chisq =",'{:.4f}'.format(self.chisq_reduced))
         if "CO2 Profile Scale Factor" in x["names"] and "CH4 Profile Scale Factor" in x["names"]:
             xco2_ret_temp = calculate_Xgas(model_prior.co2*x["ret"][0], model_prior.p*x["ret"][3], model_prior.q*x["ret"][4])[0] * 1e6
             xch4_ret_temp = calculate_Xgas(model_prior.ch4*x["ret"][1], model_prior.p*x["ret"][3], model_prior.q*x["ret"][4])[0] * 1e9
