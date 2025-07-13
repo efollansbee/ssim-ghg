@@ -161,8 +161,38 @@ class Fluxes(RunSpecs):
 
         return state_vector
 
-    def convert_state_to_2d(self, input_state):
-        pass
+    def convert_state_to_2d(self, input_state, year, month):
+        output_arr = np.zeros((180,360), dtype=np.float64)
+        # if year/month is outside our simulation window, return zeros
+        jd = datetime(year, month, 1)
+        if jd < self.start_date or jd >= self.end_date:
+            return output_arr
+
+        # read 1x1 masks
+        region_masks = {}
+        with Dataset(self.original_mask, 'r') as fid:
+            mask64 = fid.variables['mask64'][:]
+            for ireg in range(self.n_region):
+                region_masks[ireg] = np.abs(mask64 - (ireg+1)) < 1.0E-5 # Region00 is unoptimized and not part of the Jacobian
+        
+        # What slice of the input state should we look at? The order of elements is 
+        # [region1-month1, region1-month2, ... region1-monthN, region2-month1, region2-month2, ...]
+        # get time index within one region
+        for i_month in range(self.n_month):
+            if self.start_date + relativedelta(months=i_month) == jd:
+                break
+        else:
+            raise RuntimeError('Cannot find time index for %04i-%02i'%(year, month))
+        
+        for ireg in range(self.n_region):
+            forcing = input_state[ireg*self.n_month+i_month]
+            output_arr[region_masks[ireg]] = forcing
+        
+        return {
+            'lat_edges': np.linspace(-90.,90.,181),
+            'lon_edges': np.linspace(-180-0.5,180-0.5,361),
+            'flux': output_arr,
+            }
 
     def construct_state_vector_from_sib4(self, smush_regions=True, land_var='I2b', ocean_var='Fnetoce'):
         ym_tuples = []

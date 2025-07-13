@@ -1,4 +1,4 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 09 Jul 2025 (Wed) 15:09:30 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/ensemble_size.r - 10 Jul 2025 (Thu) 11:43:32 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update with a varying number
@@ -17,7 +17,11 @@ source("../tools/progress.bar.r")
 source("../tools/find.indir.r")
 source("../tools/time.r")
 source("../tools/load.ncdf4.r")
-options(warn=2) # error out on warnings (probably they are mistakes)
+
+# Cannot do this warn=2 setting, since the template yaml file
+# has a syntax issue.
+#options(warn=2) # error out on warnings (probably they are mistakes)
+
 indir <- find.indir()
 
 # Since these load() statements can take some time, we can supply
@@ -211,7 +215,9 @@ for (iexp in 1:nexperiments) {
     # Notice the 1/nparms below. This is assuming that the no. DOFs is
     # nparms.
     chi2.state <- (1/nparms) * t(state$x.post - truth_condition) %*% solve(state$Sx.post) %*% (state$x.post - truth_condition)
-    chi2.obs <- (1/n.selected) * t(obs[lx.selected] - y.prior) %*% solve(H[lx.selected,] %*% state$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.prior)
+    y.post <- simulate_observed(x=state$x.post,H=H[lx.selected,])
+
+    chi2.obs <- (1/n.selected) * t(obs[lx.selected] - y.post) %*% solve(H[lx.selected,] %*% state$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (obs[lx.selected] - y.post)
 
     rmse <- compute.rmse(state$x.post - truth_condition)
     cat(sprintf("[%s] chi2 means: state %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (%d members) in %.1fs\n",

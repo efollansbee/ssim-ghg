@@ -1,4 +1,4 @@
-time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/common_problem.r - 09 Jul 2025 (Wed) 16:48:38 MDT>"
+time.stamp <- "Time-stamp: <aj:/Users/andy/Desktop/ssim-ghg/EnKF/base/common_problem.r - 10 Jul 2025 (Thu) 10:53:03 MDT>"
 cat(sprintf("[Script info] %s\n",time.stamp))
 
 # This code applies the EnKF measurement update to a truth condition
@@ -27,7 +27,10 @@ source("../tools/find.indir.r")
 source("../tools/time.r")
 source("../tools/load.ncdf4.r")
 source("../tools/normality.test.r")
-options(warn=2) # error out on warnings (probably they are mistakes)
+
+# Cannot do this warn=2 setting, since the template yaml file
+# has a syntax issue.
+#options(warn=2) # error out on warnings (probably they are mistakes)
 indir <- find.indir()
 
 # Since these load() statements can take some time, we use
@@ -253,7 +256,7 @@ cat(sprintf("[Ens] chi2 means: state %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f (
             chi2.state.ens,chi2.obs.ens,ndofs.ens,ndofs.patil(state.ens$Sx.post),compute.rmse(state.ens$x.post - truth_condition),nmemb))
 
 chi2.state.kf <- (1/ndofs.kf) * t(state.kf$x.post - truth_condition) %*% solve(state.kf$Sx.post) %*% (state.kf$x.post - truth_condition)
-resid.kf <- obs[lx.selected] - obs.kf.prior
+resid.kf <- obs[lx.selected] - obs.kf.post
 chi2.obs.kf <- (1/n.selected) * t(resid.kf) %*% solve(H[lx.selected,] %*% state.kf$Sx.prior %*% t(H[lx.selected,]) + diag(Szd.assumed[lx.selected])) %*% (resid.kf)
 
 cat(sprintf(" [KF] chi2 means: state %.2f, obs %.2f on %d (%d) DOFs, RMSE %.2f\n",
