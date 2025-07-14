@@ -29,6 +29,8 @@ epsilon = 0.622
 #Other variables that we're hard-coding.
 ILS_width = 5.0
 
+#For SSIM-GHG, use a random seed to get consistent results
+np.random.seed(11248)
 
 class ForwardFunction:
     def __init__(self,SNR=s.SNR,sza_0=s.sza_0,sza=s.sza,co2=s.co2_true,ch4=s.ch4_true,T=s.T_true,p=s.p_true,q=s.q_true,albedo=s.albedo_true,albedo_slope=s.albedo_slope_true,band_min_wn=s.band_min_wn,band_max_wn=s.band_max_wn,band_spectral_resolutions=s.band_spectral_resolutions,band_min_um=s.band_min_um,band_max_um=s.band_max_um,band_spectral_points=s.band_spectral_points,band_wn=s.band_wn,band_wl=s.band_wl,band_absco_res_wn=s.band_absco_res_wn,resolving_power_band=s.resolving_power_band,sigma_band=s.sigma_band,band_wn_index=s.band_wn_index,ILS_Gaussian_term=s.ILS_Gaussian_term,ILS_Gaussian_term_sum=s.ILS_Gaussian_term_sum,absco_data=None,band_molecules=s.band_molecules,P_aerosol=s.P_aerosol,ssa_aerosol=s.ssa_aerosol,qext_aerosol=s.qext_aerosol,height_aerosol=s.height_aerosol,tau_aerosol=None,measurement_error=False,jacobians=False):
