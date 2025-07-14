@@ -4,32 +4,19 @@ import os, yaml
 
 #Default settings
 
-# Where are the ABSCO tables kept?
-with open('../site_settings.yml', 'r') as fid:
-    conf = yaml.safe_load(fid)
-ABSCO_TABLE_FILE = os.path.join(conf['global_paths']['input_folder'], conf['retrieval']['absco_table'])
-
-#0.76 um O2 A-band, 1.60 um weak CO2 band, 1.65 um CH4 band
+#Band ranges: 0.76 um O2 A-band, 1.60 um weak CO2 band, 1.65 um CH4 band
 band_max_wn = np.array([13190.0,6285.0,6150.0]) #cm^-1
 band_min_wn = np.array([12950.0,6166.0,5995.0]) #cm^-1
 
-#Set the spectral resolution (FWHM) to be OCO-2-like
+#Set the spectral resolution (full width at half maximum) to be OCO-2-like
 band_spectral_resolutions = np.array([0.042, 0.076, 0.076]) #nm
-
-#What molecules do we care about for each band?
-band_molecules = []
-band_molecules.append(["o2","h2o"])
-band_molecules.append(["co2","h2o"])
-band_molecules.append(["ch4","h2o"])
-
-#Create a "true" scene
-sza_0 = 30.0 #solar zenith angle, degrees
-sza   = 0.0 #sensor zenith angle, degrees
-albedo_true = np.array([0.20, 0.25, 0.26]) #per-band albedo
-albedo_slope_true = np.array([0.0, 0.0, 0.0]) #per-band linear albedo slopes
 
 #Signal-to-noise ratio
 SNR = 400.0
+
+#Scene geometry
+sza_0 = 30.0 #solar zenith angle, degrees
+sza = 0.0 #sensor zenith angle, degrees
 
 #Aerosol properties
 height_aerosol = 80000 #Assume the aerosol layer goes from the surface to this pressure in Pa
@@ -37,10 +24,23 @@ d_aerosol = 3.0e-6 #Particle diameter [m]
 n_aerosol = 1.4 + 0.0003j #Refractive index
 tau_aerosol_true = 0.0 #AOD in the first band (O2 A-band at ~0.76 um)
 
+#What molecules do we care about for each band?
+band_molecules = []
+band_molecules.append(["o2","h2o"])
+band_molecules.append(["co2","h2o"])
+band_molecules.append(["ch4","h2o"])
+
+# Where are the ABSCO tables kept?
+with open('../site_settings.yml', 'r') as fid:
+    conf = yaml.safe_load(fid)
+ABSCO_TABLE_FILE = os.path.join(conf['global_paths']['input_folder'], conf['retrieval']['absco_table'])
+
 
 ############################################
 #True settings
 
+albedo_true = np.array([0.20, 0.25, 0.26]) #per-band albedo
+albedo_slope_true = np.array([0.0, 0.0, 0.0]) #per-band linear albedo slopes
 p_true = np.array([ 0.01, 10000.,  20000.,  30000.,  40000.,  50000.,  60000.,  70000., 80000.,  90000., 100000.])
 co2_true = np.array([0.0004032 , 0.00041564, 0.00041696, 0.00041686, 0.00041675, 0.00041665, 0.00041653, 0.00041641, 0.00041627, 0.00041612, 0.00041595]) #mol/mol
 ch4_true = np.array([500e-9,1500e-9,1900e-9,1900e-9,1900e-9,1900e-9,1900e-9,1900e-9,1900e-9,1900e-9,1900e-9]) #mol/mol
