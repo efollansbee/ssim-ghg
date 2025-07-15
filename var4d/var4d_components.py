@@ -292,13 +292,19 @@ class Observations(RunSpecs):
             'co2_wbi_tower-insitu_1_allvalid-379magl', 'co2_wbi_surface-pfp_1_allvalid-379magl',
             'co2_wgc_tower-insitu_1_allvalid-483magl',
             'co2_wkt_tower-insitu_1_allvalid-457magl']
-        self.site_code_to_dataset = {
+        self.site_code_to_dataset = { # non-MBL sites
             'lef': ['co2_lef_tower-insitu_1_allvalid-396magl'],
             'amt': ['co2_amt_tower-insitu_1_allvalid-107magl'],
             'wkt': ['co2_wkt_tower-insitu_1_allvalid-457magl'],
             'wbi': ['co2_wbi_tower-insitu_1_allvalid-379magl', 'co2_wbi_surface-pfp_1_allvalid-379magl'],
             'sct': ['co2_sct_surface-pfp_1_allvalid-305magl', 'co2_sct_tower-insitu_1_allvalid-305magl'],
             'wgc': ['co2_wgc_tower-insitu_1_allvalid-483magl'],
+            'lmp': ['co2_lmp_surface-flask_1_representative'],
+            'cib': ['co2_cib_surface-flask_1_representative'],
+            'izo': ['co2_izo_surface-insitu_27_allvalid'],
+            'ask': ['co2_ask_surface-flask_1_representative'],
+            'sey': ['co2_sey_surface-flask_1_representative'],
+            'hpb': ['co2_hpb_surface-flask_1_representative'],
             }
         self.unassim_mdm = 1.0E36 # ppm
 
@@ -811,6 +817,9 @@ class Var4D_Components(RunSpecs):
         max_gradnorm = kwargs['gradnorm'] if 'gradnorm' in kwargs else 1.0E-4
         optim_method = kwargs['optim_method'] if 'optim_method' in kwargs else 'BFGS'
         use_hessian = kwargs['hessian'] if 'hessian' in kwargs else False
+        self.max_func_change = kwargs['max_func_change'] if 'max_func_change' in kwargs else None # tolerance on change of J between iterations
+        self.rel_func_change = kwargs['rel_func_change'] if 'rel_func_change' in kwargs else None # once J is below J0 * rel_func_change, stop
+
         sites_to_output = set(self.obs_cons.site_code_to_dataset.keys())
         sites_to_output = sites_to_output.union(set(self.obs_cons.mbl_sites))
         sites_to_output = sites_to_output.union(set(self.obs_cons.noaa_observatories))
@@ -915,6 +924,19 @@ class Var4D_Components(RunSpecs):
     def loop_callback(self, intermediate_result):
         self.interim_states['x'].append(intermediate_result.x)
         self.interim_states['fun'].append(intermediate_result.fun)
+        # check for custom convergence
+        converged = False
+        if self.max_func_change is not None and len(self.interim_states['fun']) >= 2:
+            dJ = abs(self.interim_states['fun'][-1] - self.interim_states['fun'][-2])
+            if dJ <= self.max_func_change:
+                converged = True
+        if self.rel_func_change is not None and len(self.interim_states['fun']) >= 2:
+            J0 = self.interim_states['fun'][0]
+            Jnow = self.interim_states['fun'][-1]
+            if Jnow <= J0 * self.rel_func_change:
+                converged = True
+        if converged:
+            raise StopIteration
 
     def state_to_flux(self, state_vector):
         return self.state_prior + np.matmul(self.L, state_vector)
