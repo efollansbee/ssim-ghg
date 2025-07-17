@@ -307,6 +307,22 @@ class Observations(RunSpecs):
             'hpb': ['co2_hpb_surface-flask_1_representative'],
             }
         self.unassim_mdm = 1.0E36 # ppm
+        self.oco2_10s_file = os.path.join(self.data_root, 'obs/OCO2_b10c_10sec_GOOD_r5.nc4')
+    
+    def get_oco2_dtype(self, sounding_id_list):
+        with Dataset(self.oco2_10s_file, 'r') as fid:
+            sounding_ids = fid.variables['sounding_id'][:]
+            data_type = fid.variables['data_type'][:]
+        ret_dict = {}
+        for i,d in zip(sounding_ids, data_type):
+            ret_dict[i] = d
+        ret_list = np.zeros(len(sounding_id_list), dtype=np.int8)
+        for i,s in enumerate(sounding_id_list):
+            try:
+                ret_list[i] = ret_dict[s]
+            except KeyError:
+                pass
+        return ret_list
 
     def convert_datetime_to_decimal_year(self, datetime_array):
         ret_arr = np.zeros(len(datetime_array), dtype=np.float64)
@@ -552,6 +568,7 @@ class Var4D_Components(RunSpecs):
             obs_lon = fid.variables['longitude'][:]
             time_origin = datetime.strptime(fid.variables['time'].units, 'Minutes since %Y-%m-%d %H:%Mz')
             obs_times = [time_origin + timedelta(minutes=int(m)) for m in fid.variables['time'][:]]
+            oco2_sounding_ids = fid.variables['OCO2_id'][:] # dimension n_OCO2
 
         # We define a few types of biases, students are encouraged to try to add additional bias types
         obs_bias = np.zeros_like(self.obs_vec)
@@ -569,13 +586,20 @@ class Var4D_Components(RunSpecs):
             if kwargs['platform'].lower() == 'is':
                 bias_idx = np.logical_and(bias_idx, is_idx)
             if kwargs['platform'].lower() == 'oco2':
-                bias_idx = np.logical_and(bias_idx, oco2_idx)
+                if 'oco2_data_type' in kwargs:
+                    data_type = self.obs_cons.get_oco2_dtype(oco2_sounding_ids) # n_OCO2
+                    data_type_extended = np.zeros(nobs, dtype=np.int8)
+                    data_type_extended[oco2_idx] = data_type
+                    bias_idx = np.logical_and(bias_idx, data_type_extended == kwargs['oco2_data_type'])
+                else:
+                    bias_idx = np.logical_and(bias_idx, oco2_idx)
+
         if 'months' in kwargs:
             month_idx = np.array([d.month in kwargs['months'] for d in obs_times])
             bias_idx = np.logical_and(bias_idx, month_idx)
 
         obs_bias[bias_idx] = obs_bias[bias_idx] + bias_ppm
-        print('Added %.1f ppm bias to %i out of %i obs'%(bias_ppm, bias_idx.sum(), len(bias_idx)))
+        print('Added %.2f ppm bias to %i out of %i obs'%(bias_ppm, bias_idx.sum(), len(bias_idx)))
 
         self.obs_vec = self.obs_vec + obs_bias
 

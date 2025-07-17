@@ -335,7 +335,7 @@ class Visualize_Fluxes(Visualize):
         if 'title' in kwargs:
             fig.text(title_pos[0], title_pos[1], kwargs['title'], ha='center', va='center', **self.label_font_property)
 
-    def print_annual_totals(self):
+    def print_annual_totals(self, **kwargs):
         result_dict = {}
         result_file = os.path.join(self.output_dir, 'optim_summary.nc')
         with Dataset(result_file, 'r') as fid:
@@ -388,7 +388,8 @@ class Visualize_Fluxes(Visualize):
         for region, data in result_dict.items():
             if read_errors:
                 # color code according to difference with truth, color in red if it's 3 sigma away from truth
-                if abs(data['truth']-data['poste']) > 5.0*data['poste_err']:
+                outlier_factor = kwargs['outlier_factor'] if 'outlier_factor' in kwargs else 5.0
+                if abs(data['truth']-data['poste']) > outlier_factor*data['poste_err']:
                     RED = '\033[91m' ; RESET = '\033[0m'
                     print_line = RED + region.ljust(max_region_length) + '%15.2f'%data['truth'] + '%9.2f ± %4.2f'%(data['prior'],data['prior_err']) + '%9.2f ± %4.2f'%(data['poste'],data['poste_err']) + RESET
                 else:

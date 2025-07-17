@@ -61,7 +61,6 @@ class Paths(object):
         self.obs_by_dataset = os.path.join(self.data_root, 'obs/obs_by_dataset.pickle')
         self.bg_rda = os.path.join(self.data_root, 'jacobians/jacob_bgd_060524.rda')
         self.bg_nc = os.path.join(self.data_root, 'jacobians/jacob_bgd_060524.nc')
-
         self.region_aggregates = {
             'North America': ['North American Boreal', 'North American Temperate'],
             'South America': ['South American Tropical', 'South American Temperate'],
