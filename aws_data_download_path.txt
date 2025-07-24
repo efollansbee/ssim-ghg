@@ -1,0 +1,7 @@
+# data download
+aws s3 sync s3://ghg-ssim/ssim-ghg-data /tmp/ssim-ghg-data
+
+#to update
+navigate to ssim-ghg folder
+git stash #saves your modified notebooks before the pull changes the notebooks again
+git pull
